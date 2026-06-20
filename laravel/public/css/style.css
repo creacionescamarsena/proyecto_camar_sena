@@ -1,0 +1,214 @@
+
+    body {
+      background-color: #f5f5f5;
+    }
+
+    .login-container {
+      min-height: 100vh;
+    }
+
+    .login-card {
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+
+    .logo {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      margin-bottom: 15px;
+    }
+
+    .btn-main {
+      background-color: #506d2f;
+      color: white;
+    }
+
+    .btn-main:hover {
+      background-color: #3e5525;
+    }
+
+    .btn-role {
+      background-color: #7d5642;
+      color: white;
+    }
+
+    .btn-role:hover {
+      background-color: #5f4031;
+    }
+
+    .form-control:focus {
+      border-color: #506d2f;
+      box-shadow: 0 0 5px #506d2f;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      height: 100vh;
+      background-color: #506d2f;
+      color: white;
+      position: fixed;
+      width: 220px;
+    }
+
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      transition: all 180ms ease;
+    }
+
+    .sidebar a:hover {
+      background-color: rgba(62,85,37,0.95);
+      transform: translateX(6px);
+      text-decoration: none;
+    }
+
+    .sidebar a i { font-size: 1.05rem; }
+
+    .content {
+      margin-left: 220px;
+      padding: 20px;
+    }
+
+    /* Cards */
+    .card-custom {
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    /*.btn-main-2 {
+      background-color: #7d5642;
+      color: white;
+    }
+
+    .btn-main-2:hover {
+      background-color: #5f4031;
+    }
+    */
+
+    /* Responsive */
+    @media(max-width:768px){
+      .sidebar{
+        position: relative;
+        width: 100%;
+        height: auto;
+      }
+
+      .content{
+        margin-left: 0;
+      }
+    }
+
+  .sidebar a.active { background-color: rgba(62,85,37,0.95); border-radius: 8px; }
+
+  /* Logo: small rounded corner, applied globally via .logo */
+  .logo { width: 100px; height: 100px; object-fit: contain; margin-bottom: 15px; border-radius: 8px; display: block; }
+  /* Sidebar-specific logo sizing */
+  .sidebar .logo { width: 70px; height: 70px; margin-bottom: 8px; }
+
+  /* Sidebar button more fluid (subtle) */
+  .sidebar .btn { transition: background-color 200ms ease, transform 120ms ease; }
+  .sidebar .btn:active { transform: translateY(1px); }
+
+  .alert-stock {
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 12px;
+    padding: 14px 20px;
+  }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 9999;
+    justify-content: center; align-items: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-confirm {
+    background: white; border-radius: 16px;
+    padding: 40px 50px; text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2); min-width: 340px;
+  }
+  .btn-icon-cancel {
+    width:56px; height:56px; border-radius:50%;
+    border:2px solid #dc3545; background:white; color:#dc3545;
+    font-size:1.4rem; cursor:pointer; transition:all .2s;
+  }
+  .btn-icon-cancel:hover { background:#dc3545; color:white; }
+  .btn-icon-confirm {
+    width:56px; height:56px; border-radius:50%;
+    border:2px solid #506d2f; background:white; color:#506d2f;
+    font-size:1.4rem; cursor:pointer; transition:all .2s;
+  }
+  .btn-icon-confirm:hover { background:#506d2f; color:white; }
+
+.pedido-card {
+  
+  background-color: #fff;
+}
+
+/* Línea separadora más parecida al wireframe */
+.pedido-card hr {
+  border-top: 2px solid black;
+}
+
+
+  .producto-card {
+    transition: box-shadow .2s;
+  }
+  .producto-card:hover {
+    box-shadow: 0 4px 20px rgba(80,109,47,0.18);
+  }
+
+  .talla-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 2px solid #506d2f;
+    border-radius: 6px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #506d2f;
+    background: white;
+  }
+
+  a.btn-outline-fixed,
+  button.btn-outline-fixed,
+  a.btn.btn-outline-secondary.btn-outline-fixed,
+  a.btn.btn-outline-secondary {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: .25rem .5rem !important;
+    min-width: 80px !important;
+    border: 1px solid #6c757d !important;
+    border-radius: .25rem !important;
+    color: #6c757d !important;
+    background-color: transparent !important;
+    text-decoration: none !important;
+    font-size: .8rem !important;
+    line-height: 1.5 !important;
+  }
+
+  a.btn-outline-fixed:hover,
+  button.btn-outline-fixed:hover,
+  a.btn.btn-outline-secondary.btn-outline-fixed:hover,
+  a.btn.btn-outline-secondary:hover {
+    color: #fff !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+  }
+
+  .stock-bar {
+    border-top: 1px solid #eee;
+  }
+
+  
+
