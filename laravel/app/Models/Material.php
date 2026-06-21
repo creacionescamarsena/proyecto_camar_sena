@@ -19,11 +19,13 @@ class Material extends Model
         'proveedor_material_cod_proveedor',
         'precio',
         'cantidad',
+        'estado',
     ];
 
     protected $casts = [
         'precio' => 'decimal:2',
         'cantidad' => 'integer',
+        'estado' => 'string',
     ];
 
     public function chaquetas()

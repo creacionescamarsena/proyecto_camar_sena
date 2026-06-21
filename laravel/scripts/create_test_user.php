@@ -25,7 +25,7 @@ if (! $usuario) {
         'nombres' => 'Juan Nicolas',
         'apellidos' => 'Pinzón Medina',
         'correo' => $email,
-        'telefono' => null,
+        'telefono' => '3001234567',
         'contraseña' => Hash::make('123456'),
         'rol' => 'Cliente',
         'estado' => 'Activo',

@@ -8,10 +8,35 @@
     <h4 class="mb-0">Materiales</h4>
     <p class="text-muted small mb-0">Gestiona los materiales para productos</p>
   </div>
-  <a href="{{ route('admin.materiales.create') }}" class="btn btn-main">
-    <i class="bi bi-plus-circle me-1"></i> Nuevo material
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{{ route('admin.materiales.inactivos') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-archive me-1"></i> Ver inactivos
+    </a>
+    <a href="{{ route('admin.reportes.materiales') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-bar-chart-line me-1"></i> Reporte stock
+    </a>
+    <a href="{{ route('admin.materiales.create') }}" class="btn btn-main">
+      <i class="bi bi-plus-circle me-1"></i> Nuevo material
+    </a>
+  </div>
 </div>
+
+<form method="GET" action="{{ route('admin.materiales.index') }}" class="card card-custom p-3 mt-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" name="buscar" value="{{ request('buscar') }}" class="form-control" placeholder="Buscar por material, proveedor, precio o stock">
+      </div>
+    </div>
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button type="submit" class="btn btn-main"><i class="bi bi-search me-1"></i> Buscar</button>
+      @if(request('buscar'))
+        <a href="{{ route('admin.materiales.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i> Limpiar</a>
+      @endif
+    </div>
+  </div>
+</form>
 
 @if($materialesStockBajo > 0)
   <div class="alert-stock mt-3 mb-3 d-flex align-items-center gap-3">
@@ -48,8 +73,8 @@
             <td>${{ number_format($material->precio, 0, ',', '.') }}</td>
             <td>{{ $material->cantidad }}</td>
             <td>
-              <span class="badge {{ $material->cantidad > 10 ? 'bg-success' : 'bg-warning text-dark' }}">
-                {{ $material->cantidad > 10 ? 'Disponible' : 'Bajo' }}
+              <span class="badge {{ $material->cantidad > 9 ? 'bg-success' : 'bg-warning text-dark' }}">
+                {{ $material->cantidad > 9 ? 'Disponible' : 'Bajo' }}
               </span>
             </td>
             <td>
@@ -77,6 +102,12 @@
     </table>
   </div>
 </div>
+
+@if($materiales instanceof \Illuminate\Contracts\Pagination\Paginator)
+  <div class="mt-3">
+    {{ $materiales->links() }}
+  </div>
+@endif
 
 @endsection
 

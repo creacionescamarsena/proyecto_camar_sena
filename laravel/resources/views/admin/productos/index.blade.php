@@ -8,10 +8,35 @@
     <h4 class="mb-0">Productos</h4>
     <p class="text-muted small mb-0">Gestiona el catálogo de productos</p>
   </div>
-  <a href="{{ route('admin.productos.create') }}" class="btn btn-main">
-    <i class="bi bi-plus-circle me-1"></i> Nuevo producto
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{{ route('admin.productos.inactivos') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-archive me-1"></i> Ver inactivos
+    </a>
+    <a href="{{ route('admin.reportes.inventario') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-bar-chart-line me-1"></i> Reporte stock
+    </a>
+    <a href="{{ route('admin.productos.create') }}" class="btn btn-main">
+      <i class="bi bi-plus-circle me-1"></i> Nuevo producto
+    </a>
+  </div>
 </div>
+
+<form method="GET" action="{{ route('admin.productos') }}" class="card card-custom p-3 mt-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" name="buscar" value="{{ request('buscar') }}" class="form-control" placeholder="Buscar por producto, categoria, ID o precio">
+      </div>
+    </div>
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button type="submit" class="btn btn-main"><i class="bi bi-search me-1"></i> Buscar</button>
+      @if(request('buscar'))
+        <a href="{{ route('admin.productos') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i> Limpiar</a>
+      @endif
+    </div>
+  </div>
+</form>
 
 <div class="row g-3 mt-2">
   @forelse($productos as $producto)
@@ -75,6 +100,12 @@
     </div>
   @endforelse
 </div>
+
+@if($productos instanceof \Illuminate\Contracts\Pagination\Paginator)
+  <div class="mt-3">
+    {{ $productos->links() }}
+  </div>
+@endif
 
 @endsection
 

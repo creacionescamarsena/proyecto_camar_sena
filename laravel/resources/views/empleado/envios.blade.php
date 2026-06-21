@@ -10,6 +10,23 @@
   </div>
 </div>
 
+<form method="GET" action="{{ route('empleado.envios') }}" class="card card-custom p-3 mt-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" name="buscar" value="{{ request('buscar') }}" class="form-control" placeholder="Buscar por envio, pedido, cliente, producto, destino o estado">
+      </div>
+    </div>
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button type="submit" class="btn btn-main"><i class="bi bi-search me-1"></i> Buscar</button>
+      @if(request('buscar'))
+        <a href="{{ route('empleado.envios') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i> Limpiar</a>
+      @endif
+    </div>
+  </div>
+</form>
+
 <!-- Tarjetas -->
 <div class="row g-3 mb-4 mt-1">
   <div class="col-12 col-md-4">
@@ -79,5 +96,11 @@
     </table>
   </div>
 </div>
+
+@if($envios instanceof \Illuminate\Contracts\Pagination\Paginator)
+  <div class="mt-3">
+    {{ $envios->links() }}
+  </div>
+@endif
 
 @endsection

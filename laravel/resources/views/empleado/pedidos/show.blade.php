@@ -17,11 +17,11 @@
 
   <!-- Encabezado -->
   <div class="d-flex justify-content-between flex-wrap">
-    <div>
-      <h5>Pedido {{ $pedido->codigo }}</h5>
-      <p class="mb-1">Cliente: {{ $pedido->cliente }}</p>
-      <p class="mb-0">Fecha entrega: {{ $pedido->fecha_entrega }}</p>
-    </div>
+ <div>
+    <h5>Pedido {{ $pedido->codigo }}</h5>
+    <p class="mb-1">Cliente: {{ $pedido->cliente->nombres }}</p>
+    <p class="mb-0">Fecha entrega: {{ $pedido->fecha_entrega }}</p>
+</div>
     <div>
       @php
         $badgeClase = match($pedido->estado) {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UsuarioStoreRequest;
 use App\Http\Requests\UsuarioUpdateRequest;
 use App\Models\Usuario;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -12,11 +13,57 @@ use Illuminate\Support\Facades\Schema;
 class UsuarioController extends Controller
 {
  
-    public function index()
+    public function index(Request $request)
     {
-        $usuarios = Usuario::latest('id_usuario')->get();
+        $usuarios = Usuario::where('estado', 'Activo')
+            ->with('tipo_documento')
+            ->when($request->filled('buscar'), function ($query) use ($request) {
+                $buscar = '%' . trim($request->buscar) . '%';
+                $query->where(function ($query) use ($buscar) {
+                    $query->where('id_usuario', 'like', $buscar)
+                        ->orWhere('nombres', 'like', $buscar)
+                        ->orWhere('apellidos', 'like', $buscar)
+                        ->orWhere('correo', 'like', $buscar)
+                        ->orWhere('telefono', 'like', $buscar)
+                        ->orWhere('rol', 'like', $buscar);
+                });
+            })
+            ->latest('id_usuario')
+            ->paginate(10)
+            ->withQueryString();
 
         return view('admin.usuarios.usu_admin', compact('usuarios'));
+    }
+
+    public function inactivos(Request $request)
+    {
+        $usuarios = Usuario::where('estado', 'Inactivo')
+            ->with('tipo_documento')
+            ->when($request->filled('buscar'), function ($query) use ($request) {
+                $buscar = '%' . trim($request->buscar) . '%';
+                $query->where(function ($query) use ($buscar) {
+                    $query->where('id_usuario', 'like', $buscar)
+                        ->orWhere('nombres', 'like', $buscar)
+                        ->orWhere('apellidos', 'like', $buscar)
+                        ->orWhere('correo', 'like', $buscar)
+                        ->orWhere('telefono', 'like', $buscar)
+                        ->orWhere('rol', 'like', $buscar);
+                });
+            })
+            ->latest('id_usuario')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('admin.usuarios.inactivos', compact('usuarios'));
+    }
+
+    public function reactivar(Usuario $usuario)
+    {
+        $usuario->update(['estado' => 'Activo']);
+
+        return redirect()
+            ->route('admin.usuarios.inactivos')
+            ->with('success', 'Usuario reactivado correctamente.');
     }
 
    
@@ -115,33 +162,10 @@ class UsuarioController extends Controller
 
     public function destroy(Usuario $usuario)
     {
-        DB::transaction(function () use ($usuario) {
-            $userId = $usuario->id_usuario;
-
-            if (Schema::hasTable('facturacion')) {
-                DB::table('facturacion')
-                    ->where('cliente_usuario_id_usuario', $userId)
-                    ->orWhere('empleado_usuario_id_usuario', $userId)
-                    ->delete();
-            }
-
-            if (Schema::hasTable('cliente')) {
-                DB::table('cliente')->where('usuario_id_usuario', $userId)->delete();
-            }
-
-            if (Schema::hasTable('empleado')) {
-                DB::table('empleado')->where('usuario_id_usuario', $userId)->delete();
-            }
-
-            if (Schema::hasTable('usuario_has_roles')) {
-                DB::table('usuario_has_roles')->where('usuario_id_usuario', $userId)->delete();
-            }
-
-            $usuario->delete();
-        });
+        $usuario->update(['estado' => 'Inactivo']);
 
         return redirect()
             ->route('admin.usuarios.index')
-            ->with('success', 'Usuario eliminado correctamente.');
+            ->with('success', 'Usuario inactivado correctamente.');
     }
 }

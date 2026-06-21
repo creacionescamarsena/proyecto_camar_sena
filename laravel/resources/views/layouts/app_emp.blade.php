@@ -15,7 +15,9 @@
   <div class="mb-3 text-center">
     <img src="{{ asset('img/logo.png') }}" alt="Logo" class="logo mx-auto">
     <p class="mb-0 fw-bold mt-2">Creaciones Camar</p>
-    <small class="text-muted">Empleado</small>
+    <small>{{ auth()->user()?->nombres }}</small>
+    <br>
+    <small>Empleado</small>
   </div>
 
   <a href="{{ route('empleado.dashboard') }}" class="{{ request()->routeIs('empleado.dashboard') ? 'active' : '' }}">

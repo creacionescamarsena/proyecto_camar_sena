@@ -47,6 +47,12 @@
       <a href="{{ route('cliente.catalogo') }}" class="btn btn-main mt-3">Ir al catálogo</a>
     </div>
   @endforelse
+
+  @if($pedidos instanceof \Illuminate\Contracts\Pagination\Paginator)
+    <div class="mt-4">
+      {{ $pedidos->links() }}
+    </div>
+  @endif
 </div>
 
 @endsection

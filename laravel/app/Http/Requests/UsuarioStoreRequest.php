@@ -19,7 +19,7 @@ class UsuarioStoreRequest extends FormRequest
             'nombres' => ['required', 'string', 'max:100', 'regex:/^[\p{L}\s]+$/u'],
             'apellidos' => ['required', 'string', 'max:100', 'regex:/^[\p{L}\s]+$/u'],
             'email' => ['required', 'email', 'max:255', 'unique:usuario,correo'],
-            'telefono' => ['nullable', 'regex:/^[0-9]+$/', 'min:8', 'max:16'],
+            'telefono' => ['required', 'regex:/^[0-9]+$/', 'min:8', 'max:16'],
             'password' => ['required', 'string', 'min:6'],
             'rol' => ['required', 'in:Admin,Empleado,Cliente'],
         ];
@@ -48,6 +48,7 @@ class UsuarioStoreRequest extends FormRequest
             'email.email' => 'El correo debe tener un formato válido (ej: usuario@ejemplo.com).',
             'email.max' => 'El correo no puede tener más de 255 caracteres.',
             'email.unique' => 'Este correo electrónico ya está registrado.',
+            'telefono.required' => 'Por favor rellena el teléfono.',
             'telefono.regex' => 'El teléfono solo puede contener números.',
             'telefono.min' => 'El teléfono debe tener al menos 8 dígitos.',
             'telefono.max' => 'El teléfono no puede tener más de 16 dígitos.',

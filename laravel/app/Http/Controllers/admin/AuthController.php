@@ -55,13 +55,16 @@ class AuthController extends Controller
         }
 
         Auth::login($usuario);
+        $request->session()->regenerate();
 
-        return match ($usuario->rol) {
-            'Admin' => redirect()->route('admin.dashboard'),
-            'Empleado' => redirect()->route('empleado.dashboard'),
-            'Cliente' => redirect()->route('cliente.catalogo'),
-            default => redirect()->route('cliente.catalogo'),
+        $defaultRedirect = match ($usuario->rol) {
+            'Admin' => route('admin.dashboard'),
+            'Empleado' => route('empleado.dashboard'),
+            'Cliente' => route('cliente.catalogo'),
+            default => route('cliente.catalogo'),
         };
+
+        return redirect()->intended($defaultRedirect);
     }
 
     public function register(Request $request)
@@ -72,7 +75,7 @@ class AuthController extends Controller
             'nombres' => ['required', 'string', 'max:100', 'regex:/^[\p{L}\s]+$/u'],
             'apellidos' => ['required', 'string', 'max:100', 'regex:/^[\p{L}\s]+$/u'],
             'correo' => ['required', 'email', 'max:255', 'unique:usuario,correo'],
-            'telefono' => ['nullable', 'regex:/^[0-9]+$/', 'min:8', 'max:16'],
+            'telefono' => ['required', 'regex:/^[0-9]+$/', 'min:8', 'max:16'],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ], [
             'id_usuario.required' => 'Por favor rellena el ID de usuario.',
@@ -95,6 +98,7 @@ class AuthController extends Controller
             'correo.email' => 'El correo debe tener un formato válido (ej: usuario@ejemplo.com).',
             'correo.max' => 'El correo no puede tener más de 255 caracteres.',
             'correo.unique' => 'Este correo electrónico ya está registrado.',
+            'telefono.required' => 'Por favor rellena el teléfono.',
             'telefono.regex' => 'El teléfono solo puede contener números.',
             'telefono.min' => 'El teléfono debe tener al menos 8 dígitos.',
             'telefono.max' => 'El teléfono no puede tener más de 16 dígitos.',
@@ -110,7 +114,7 @@ class AuthController extends Controller
             'nombres' => $data['nombres'],
             'apellidos' => $data['apellidos'],
             'correo' => $data['correo'],
-            'telefono' => $data['telefono'] ?? null,
+            'telefono' => $data['telefono'],
             'contraseña' => Hash::make($data['password']),
             'rol' => 'Cliente',
             'estado' => 'Activo',

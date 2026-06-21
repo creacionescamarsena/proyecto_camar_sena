@@ -10,6 +10,23 @@
   </div>
 </div>
 
+<form method="GET" action="{{ route('empleado.productos') }}" class="card card-custom p-3 mt-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" name="buscar" value="{{ request('buscar') }}" class="form-control" placeholder="Buscar por producto, categoria, ID o precio">
+      </div>
+    </div>
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button type="submit" class="btn btn-main"><i class="bi bi-search me-1"></i> Buscar</button>
+      @if(request('buscar'))
+        <a href="{{ route('empleado.productos') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i> Limpiar</a>
+      @endif
+    </div>
+  </div>
+</form>
+
 <div class="row g-3 mt-2">
   @forelse($productos as $producto)
     <div class="col-12 col-md-6">
@@ -60,6 +77,10 @@
   @endforelse
 </div>
 
+@if($productos instanceof \Illuminate\Contracts\Pagination\Paginator)
+  <div class="mt-3">
+    {{ $productos->links() }}
+  </div>
+@endif
+
 @endsection
-
-

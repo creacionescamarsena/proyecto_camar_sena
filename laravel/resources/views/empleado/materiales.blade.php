@@ -10,6 +10,23 @@
   </div>
 </div>
 
+<form method="GET" action="{{ route('empleado.materiales') }}" class="card card-custom p-3 mt-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" name="buscar" value="{{ request('buscar') }}" class="form-control" placeholder="Buscar por material, proveedor, precio o stock">
+      </div>
+    </div>
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button type="submit" class="btn btn-main"><i class="bi bi-search me-1"></i> Buscar</button>
+      @if(request('buscar'))
+        <a href="{{ route('empleado.materiales') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i> Limpiar</a>
+      @endif
+    </div>
+  </div>
+</form>
+
 @if($materialesStockBajo > 0)
   <div class="alert-stock mt-3 mb-3 d-flex align-items-center gap-3">
     <i class="bi bi-exclamation-triangle-fill fs-4" style="color:#856404"></i>
@@ -59,6 +76,10 @@
   </div>
 </div>
 
+@if($materiales instanceof \Illuminate\Contracts\Pagination\Paginator)
+  <div class="mt-3">
+    {{ $materiales->links() }}
+  </div>
+@endif
+
 @endsection
-
-

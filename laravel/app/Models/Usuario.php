@@ -5,10 +5,11 @@ namespace App\Models;
 use App\Models\TipoDocumento;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class Usuario extends Authenticatable
 {
-    use Notifiable;
+    use HasApiTokens, Notifiable;
     protected $table = 'usuario';
 
     protected $primaryKey = 'id_usuario';

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class ProductoUpdateRequest extends FormRequest
@@ -18,6 +19,10 @@ class ProductoUpdateRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $cantidades = $this->input('cantidades', []);
             if (! is_array($cantidades)) {
+                return;
+            }
+
+            if (! Schema::hasTable('stock') || ! Schema::hasTable('talla')) {
                 return;
             }
 
@@ -45,8 +50,8 @@ class ProductoUpdateRequest extends FormRequest
             'nombre' => ['required', 'string', 'max:25'],
             'categoria_id' => ['nullable', 'integer', 'exists:categoria,id_categoria'],
             'categoria_nueva' => ['nullable', 'string', 'max:25'],
-            'precio' => ['required', 'numeric', 'min:100', 'regex:/^\d+(\.\d)?$/'],
-            'cantidades' => ['required', 'array'],
+            'precio' => ['required', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'cantidades' => [Schema::hasTable('stock') && Schema::hasTable('talla') ? 'required' : 'nullable', 'array'],
             'cantidades.*' => ['integer', 'min:0'],
             'imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'materiales' => ['nullable', 'array'],
@@ -68,7 +73,7 @@ class ProductoUpdateRequest extends FormRequest
             'categoria_nueva.max' => 'La nueva categoría no puede tener más de 25 caracteres.',
             'precio.required' => 'Por favor rellena el precio del producto.',
             'precio.numeric' => 'El precio debe ser un número válido.',
-            'precio.min' => 'El precio debe ser al menos 100 pesos colombianos.',
+            'precio.min' => 'El precio debe ser 0 o superior.',
             'precio.regex' => 'El precio debe tener un formato válido (ej: 100 o 100.50).',
             'cantidades.required' => 'Por favor ingresa las cantidades para las tallas.',
             'cantidades.array' => 'Las cantidades deben ser una lista válida.',

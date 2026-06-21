@@ -83,7 +83,7 @@
             <th>Talla M</th>
             <th>Talla L</th>
             <th>Total</th>
-            <th>Estado</th>
+            <th>stock</th>
           </tr>
         </thead>
         <tbody>

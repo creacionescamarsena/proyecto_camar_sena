@@ -20,13 +20,17 @@ class Chaqueta extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'id_chaqueta',
         'modelo_chaqueta',
         'precio',
+        'imagen',
+        'estado',
         'categoria_id_categoria',
     ];
 
     protected $casts = [
         'precio' => 'decimal:1',
+        'estado' => 'string',
     ];
 
     public function categoria()

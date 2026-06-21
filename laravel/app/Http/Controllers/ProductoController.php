@@ -9,13 +9,39 @@ use App\Models\Chaqueta;
 use App\Models\Material;
 use App\Models\Talla;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class ProductoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
+    {
+        $productos = $this->productosPorEstado('Activo', $request->query('buscar'));
+
+        return view('admin.productos.index', compact('productos'));
+    }
+
+    public function inactivos(Request $request)
+    {
+        $productos = $this->productosPorEstado('Inactivo', $request->query('buscar'));
+
+        return view('admin.productos.inactivos', compact('productos'));
+    }
+
+    public function reactivar(Chaqueta $producto)
+    {
+        if (Schema::hasColumn('chaqueta', 'estado')) {
+            $producto->update(['estado' => 'Activo']);
+        }
+
+        return redirect()
+            ->route('admin.productos.inactivos')
+            ->with('success', 'Producto reactivado correctamente.');
+    }
+
+    protected function productosPorEstado(string $estado, ?string $buscar = null)
     {
         $productos = collect([]);
 
@@ -34,6 +60,16 @@ class ProductoController extends Controller
             $productos = DB::table('chaqueta as c')
                 ->leftJoin('categoria as cat', 'cat.id_categoria', '=', 'c.categoria_id_categoria')
                 ->select($select)
+                ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('c.estado', $estado))
+                ->when(filled($buscar), function ($query) use ($buscar) {
+                    $buscar = '%' . trim($buscar) . '%';
+                    $query->where(function ($query) use ($buscar) {
+                        $query->where('c.id_chaqueta', 'like', $buscar)
+                            ->orWhere('c.modelo_chaqueta', 'like', $buscar)
+                            ->orWhere('cat.tipo_categoria', 'like', $buscar)
+                            ->orWhere('c.precio', 'like', $buscar);
+                    });
+                })
                 ->orderByDesc('c.id_chaqueta')
                 ->get()
                 ->map(function ($producto) {
@@ -55,13 +91,22 @@ class ProductoController extends Controller
                             ->orderBy('t.orden')
                             ->pluck('t.talla')
                             ->toArray();
+                    } elseif (Schema::hasTable('stock') && Schema::hasColumn('stock', 'talla')) {
+                        $tallas = DB::table('stock')
+                            ->where('chaqueta_id_chaqueta', $producto->id_chaqueta)
+                            ->whereNotNull('talla')
+                            ->distinct()
+                            ->orderBy('talla')
+                            ->pluck('talla')
+                            ->toArray();
                     }
 
                     $stockTotal = 0;
                     if (Schema::hasTable('stock')) {
-                        $stockTotal = DB::table('stock')
-                            ->where('chaqueta_id_chaqueta', $producto->id_chaqueta)
-                            ->sum('cantidad');
+                        $stockQuery = DB::table('stock')->where('chaqueta_id_chaqueta', $producto->id_chaqueta);
+                        $stockTotal = Schema::hasColumn('stock', 'cantidad')
+                            ? $stockQuery->sum('cantidad')
+                            : $stockQuery->count();
                     }
 
                     return (object) [
@@ -78,14 +123,33 @@ class ProductoController extends Controller
                 });
         }
 
-        return view('admin.productos.index', compact('productos'));
+        return $this->paginarColeccion($productos);
+    }
+
+    protected function paginarColeccion($items, int $perPage = 10): LengthAwarePaginator
+    {
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $collection = collect($items)->values();
+
+        return (new LengthAwarePaginator(
+            $collection->forPage($page, $perPage)->values(),
+            $collection->count(),
+            $perPage,
+            $page,
+            ['path' => LengthAwarePaginator::resolveCurrentPath()]
+        ))->withQueryString();
     }
 
     public function create()
     {
-        $categorias = Categoria::query()->orderBy('tipo_categoria')->pluck('tipo_categoria', 'id_categoria');
-        $materiales = Material::query()->orderBy('material')->get();
-        $tallas = Talla::query()->orderBy('orden')->get();
+        $categorias = Categoria::query()->where('estado_categoria', 1)->orderBy('tipo_categoria')->pluck('tipo_categoria', 'id_categoria');
+        $materiales = Material::query()
+            ->when(Schema::hasColumn('materiales', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
+            ->orderBy('material')
+            ->get();
+        $tallas = Schema::hasTable('talla')
+            ? Talla::query()->orderBy(Schema::hasColumn('talla', 'orden') ? 'orden' : 'id_talla')->get()
+            : collect([]);
 
         return view('admin.productos.create', compact('categorias', 'materiales', 'tallas'));
     }
@@ -135,7 +199,9 @@ class ProductoController extends Controller
             }
 
             // Sincronizar relación de tallas del producto según las cantidades > 0
-            $producto->tallas()->sync($tallasConCantidad);
+            if (Schema::hasTable('chaqueta_has_talla') && Schema::hasTable('talla')) {
+                $producto->tallas()->sync($tallasConCantidad);
+            }
         }
 
         return redirect()->route('admin.productos')->with('success', 'Producto creado correctamente.');
@@ -156,10 +222,18 @@ class ProductoController extends Controller
             $producto->forceFill(['id_chaqueta' => $productoId]);
         }
 
-        $producto->load('categoria', 'materiales', 'tallas');
-        $categorias = Categoria::query()->orderBy('tipo_categoria')->pluck('tipo_categoria', 'id_categoria');
-        $materiales = Material::query()->orderBy('material')->get();
-        $tallas = Talla::query()->orderBy('orden')->get();
+        $producto->load('categoria', 'materiales');
+        if (Schema::hasTable('chaqueta_has_talla') && Schema::hasTable('talla')) {
+            $producto->load('tallas');
+        }
+        $categorias = Categoria::query()->where('estado_categoria', 1)->orderBy('tipo_categoria')->pluck('tipo_categoria', 'id_categoria');
+        $materiales = Material::query()
+            ->when(Schema::hasColumn('materiales', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
+            ->orderBy('material')
+            ->get();
+        $tallas = Schema::hasTable('talla')
+            ? Talla::query()->orderBy(Schema::hasColumn('talla', 'orden') ? 'orden' : 'id_talla')->get()
+            : collect([]);
 
         return view('admin.productos.edit', compact('producto', 'categorias', 'materiales', 'tallas'));
     }
@@ -231,7 +305,9 @@ class ProductoController extends Controller
             }
 
             // Sincronizar relación de tallas del producto según las cantidades > 0
-            $producto->tallas()->sync($tallasConCantidad);
+            if (Schema::hasTable('chaqueta_has_talla') && Schema::hasTable('talla')) {
+                $producto->tallas()->sync($tallasConCantidad);
+            }
         }
 
         return redirect()->route('admin.productos')->with('success', 'Producto actualizado correctamente.');
@@ -264,13 +340,10 @@ class ProductoController extends Controller
 
     public function destroy(Chaqueta $producto)
     {
-        if ($producto->imagen) {
-            Storage::disk('public')->delete($producto->imagen);
+        if (Schema::hasColumn('chaqueta', 'estado')) {
+            $producto->update(['estado' => 'Inactivo']);
         }
 
-        $producto->materiales()->detach();
-        $producto->delete();
-
-        return redirect()->route('admin.productos')->with('success', 'Producto eliminado correctamente.');
+        return redirect()->route('admin.productos')->with('success', 'Producto inactivado correctamente.');
     }
 }

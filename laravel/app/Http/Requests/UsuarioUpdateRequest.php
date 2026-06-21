@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class UsuarioUpdateRequest extends FormRequest
@@ -17,17 +18,25 @@ class UsuarioUpdateRequest extends FormRequest
         $usuario = $this->route('usuario');
         $primaryKey = $usuario?->getKeyName() ?? 'id_usuario';
 
-        return [
-            'id_usuario' => ['required', 'alpha_num', 'min:4', 'max:20', Rule::unique('usuario', 'id_usuario')->ignore($usuario?->getKey(), $primaryKey)],
-            'tipo_documento_id' => ['required', 'integer', 'exists:tipo_documento,id_tipo'],
+        $rules = [
             'nombres' => ['required', 'string', 'max:100', 'regex:/^[\p{L}\s]+$/u'],
             'apellidos' => ['required', 'string', 'max:100', 'regex:/^[\p{L}\s]+$/u'],
             'email' => ['required', 'email', 'max:255', Rule::unique('usuario', 'correo')->ignore($usuario?->getKey(), $primaryKey)],
-            'telefono' => ['nullable', 'regex:/^[0-9]+$/', 'min:8', 'max:16'],
+            'telefono' => ['required', 'regex:/^[0-9]+$/', 'min:8', 'max:16'],
             'password' => ['nullable', 'string', 'min:6'],
             'rol' => ['required', 'in:Admin,Empleado,Cliente'],
             'estado' => ['required', 'in:Activo,Inactivo'],
         ];
+
+        if (Schema::hasColumn('usuario', 'id_usuario')) {
+            $rules['id_usuario'] = ['nullable', 'alpha_num', 'min:1', 'max:20', Rule::unique('usuario', 'id_usuario')->ignore($usuario?->getKey(), $primaryKey)];
+        }
+
+        if (Schema::hasColumn('usuario', 'tipo_documento_id') && Schema::hasTable('tipo_documento')) {
+            $rules['tipo_documento_id'] = ['required', 'integer', 'exists:tipo_documento,id_tipo'];
+        }
+
+        return $rules;
     }
 
     public function messages(): array
@@ -53,6 +62,7 @@ class UsuarioUpdateRequest extends FormRequest
             'email.email' => 'El correo debe tener un formato válido (ej: usuario@ejemplo.com).',
             'email.max' => 'El correo no puede tener más de 255 caracteres.',
             'email.unique' => 'Este correo electrónico ya está registrado.',
+            'telefono.required' => 'Por favor rellena el teléfono.',
             'telefono.regex' => 'El teléfono solo puede contener números.',
             'telefono.min' => 'El teléfono debe tener al menos 8 dígitos.',
             'telefono.max' => 'El teléfono no puede tener más de 16 dígitos.',

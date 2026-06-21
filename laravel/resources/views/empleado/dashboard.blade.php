@@ -34,12 +34,13 @@
   </div>
 </div>
 
-<!-- Pedidos activos -->
 <div class="card card-custom p-3 mb-4">
-  <h5 class="mb-3">Pedidos activos</h5>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Pedidos prioritarios</h5>
+  </div>
 
   @forelse($pedidosActivos ?? [] as $pedido)
-    <div class="card pedido-card p-3 mb-3">
+    <div class="border rounded p-3 mb-2">
       <div class="d-flex justify-content-between">
         <div>
           <strong>Pedido {{ $pedido->codigo }}</strong><br>
@@ -49,22 +50,15 @@
           <span class="badge bg-warning text-dark">{{ $pedido->estado }}</span>
         </div>
       </div>
-      <hr>
-      <div class="d-flex justify-content-between flex-wrap">
-        <div>
-          <span>{{ $pedido->descripcion }}</span><br>
-          <span>{{ $pedido->fecha_envio }}</span>
-        </div>
-        <div class="text-end">
-          <span>${{ number_format($pedido->valor, 0, ',', '.') }}</span>
-        </div>
+      <div class="d-flex justify-content-between flex-wrap mt-2 small text-muted">
+        <span>{{ $pedido->descripcion }}</span>
+        <span>${{ number_format($pedido->valor, 0, ',', '.') }}</span>
       </div>
     </div>
   @empty
-    <p class="text-muted small">No hay pedidos activos.</p>
+    <p class="text-muted small mb-0">No hay pedidos activos.</p>
   @endforelse
 </div>
-
 <!-- Acciones rápidas -->
 <div class="row mt-2 g-3">
   <div class="col-12 col-md-6">

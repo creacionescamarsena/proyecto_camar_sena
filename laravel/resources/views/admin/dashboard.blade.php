@@ -40,7 +40,9 @@
   <!-- Envíos recientes -->
   <div class="col-12 col-lg-6">
     <div class="card card-custom p-3">
-      <h6>Envíos recientes</h6>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">Envíos recientes</h6>
+      </div>
       @forelse($enviosRecientes ?? [] as $envio)
         <div class="border p-2 mb-2">
           <strong>{{ $envio->cliente }}</strong><br>
@@ -56,7 +58,9 @@
   <!-- Materiales stock bajo -->
   <div class="col-12 col-lg-6">
     <div class="card card-custom p-3">
-      <h6>Materiales con stock bajo</h6>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">Materiales con stock bajo</h6>
+      </div>
       @forelse($materialesStockBajo ?? [] as $material)
         <div class="border p-2 mb-2 d-flex justify-content-between">
           <span>{{ $material->nombre }}</span>
@@ -75,7 +79,9 @@
 
 <!-- Tabla resumen ventas -->
 <div class="card card-custom p-3 mt-4">
-  <h6>Resumen de ventas</h6>
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="mb-0">Productos recientes</h6>
+  </div>
   <div class="table-responsive">
     <table class="table">
       <thead>

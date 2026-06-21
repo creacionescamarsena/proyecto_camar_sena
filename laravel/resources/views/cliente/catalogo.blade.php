@@ -67,6 +67,12 @@
       </div>
     @endforelse
   </div>
+
+  @if($productos instanceof \Illuminate\Contracts\Pagination\Paginator)
+    <div class="mt-4">
+      {{ $productos->links() }}
+    </div>
+  @endif
 </div>
 
 @endsection

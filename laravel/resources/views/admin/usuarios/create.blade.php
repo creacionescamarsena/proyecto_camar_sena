@@ -66,10 +66,10 @@
       </div>
 
       <div class="col-12 col-md-6">
-        <label class="form-label">Teléfono</label>
+        <label class="form-label">Teléfono <span class="text-danger">*</span></label>
         <input type="tel" name="telefono"
                class="form-control @error('telefono') is-invalid @enderror"
-               placeholder="Número de teléfono" value="{{ old('telefono') }}">
+               placeholder="Número de teléfono" value="{{ old('telefono') }}" minlength="8" maxlength="16" required>
         @error('telefono')<div class="invalid-feedback">{{ $message }}</div>@enderror
       </div>
 

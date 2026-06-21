@@ -15,6 +15,8 @@
   <div class="mb-3 text-center">
     <img src="{{ asset('img/logo.png') }}" alt="Logo" class="logo mx-auto">
     <p class="mb-0 fw-bold mt-1">Creaciones Camar</p>
+    <small>{{ auth()->user()?->nombres }}</small>
+    <br>
     <small>Administrador</small>
   </div>
 
@@ -39,7 +41,6 @@
   <a href="{{ route('admin.envios') }}" class="{{ request()->routeIs('admin.envios.*') ? 'active' : '' }}">
     <i class="bi bi-truck me-2"></i>Envíos
   </a>
-
   <hr class="mt-auto">
   <form method="POST" action="{{ route('logout') }}">
     @csrf

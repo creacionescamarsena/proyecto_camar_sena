@@ -8,10 +8,39 @@
     <h4 class="mb-0">Usuarios</h4>
     <p class="text-muted small mb-0">Gestiona los usuarios del sistema</p>
   </div>
-  <a href="{{ route('admin.usuarios.create') }}" class="btn btn-main">
-    <i class="bi bi-person-plus me-1"></i> Nuevo usuario
-  </a>
+  <div class="d-flex gap-2">
+    <a href="{{ route('admin.usuarios.inactivos') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-archive me-1"></i> Ver inactivos
+    </a>
+    <a href="{{ route('admin.reportes.usuarios') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-bar-chart-line me-1"></i> Reporte usuarios
+    </a>
+    <a href="{{ route('admin.usuarios.create') }}" class="btn btn-main">
+      <i class="bi bi-person-plus me-1"></i> Nuevo usuario
+    </a>
+  </div>
 </div>
+
+<form method="GET" action="{{ route('admin.usuarios.index') }}" class="card card-custom p-3 mt-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" name="buscar" value="{{ request('buscar') }}" class="form-control" placeholder="Buscar por documento, nombre, email, telefono o rol">
+      </div>
+    </div>
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button type="submit" class="btn btn-main">
+        <i class="bi bi-search me-1"></i> Buscar
+      </button>
+      @if(request('buscar'))
+        <a href="{{ route('admin.usuarios.index') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-x-lg me-1"></i> Limpiar
+        </a>
+      @endif
+    </div>
+  </div>
+</form>
  
 <div class="card card-custom p-3 mt-3">
   <h6 class="mb-3">Resumen de usuarios</h6>
@@ -72,7 +101,7 @@
           <tr>
             <td colspan="7" class="text-center text-muted py-5">
               <i class="bi bi-person-x fs-2 d-block mb-2"></i>
-              No hay usuarios registrados aún.
+              No hay usuarios activos para mostrar.
             </td>
           </tr>
         @endforelse
@@ -80,6 +109,12 @@
     </table>
   </div>
 </div>
+
+@if($usuarios instanceof \Illuminate\Contracts\Pagination\Paginator)
+  <div class="mt-3">
+    {{ $usuarios->links() }}
+  </div>
+@endif
  
 @endsection
  

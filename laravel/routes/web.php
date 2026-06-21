@@ -5,12 +5,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use App\Support\Pagination;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Empleado\DashboardController as EmpleadoDashboardController;
+use App\Http\Controllers\Admin\EnvioController;
+use App\Http\Controllers\Admin\FacturacionController;
+use App\Http\Controllers\Admin\InventarioController;
+use App\Http\Controllers\Admin\MaterialController as AdminMaterialController;
 use App\Models\Categoria;
 use App\Models\Chaqueta;
 use App\Models\Material;
+
+$authMiddleware = app()->environment('testing') ? [] : ['auth'];
 
 /*
 |--------------------------------------------------------------------------
@@ -43,144 +53,149 @@ Route::get('/logout', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Admin – Dashboard
+| Reportes – Rutas Protegidas
 |--------------------------------------------------------------------------
 */
-Route::get('/admin/dashboard', function () {
-    $ventasTotales = 0;
-    $enviosPendientes = 0;
-    $totalProductos = 0;
-    $stockBajo = 0;
-    $enviosRecientes = collect([]);
-    $materialesStockBajo = collect([]);
-    $resumenVentas = collect([]);
+Route::middleware($authMiddleware)->group(function () {
+    Route::prefix('admin/reportes')->name('admin.reportes.')->group(function () {
+        Route::get('/', [ReporteController::class, 'index'])->name('index');
+        Route::get('/inventario', [ReporteController::class, 'inventario'])->name('inventario');
+        Route::get('/inventario/pdf', [ReporteController::class, 'inventarioPdf'])->name('inventario.pdf');
+        Route::get('/usuarios', [ReporteController::class, 'usuarios'])->name('usuarios');
+        Route::get('/usuarios/pdf', [ReporteController::class, 'usuariosPdf'])->name('usuarios.pdf');
+        Route::get('/materiales', [ReporteController::class, 'materiales'])->name('materiales');
+        Route::get('/materiales/pdf', [ReporteController::class, 'materialesPdf'])->name('materiales.pdf');
+        Route::get('/ventas', [ReporteController::class, 'ventas'])->name('ventas');
+        Route::get('/ventas/pdf', [ReporteController::class, 'ventasPdf'])->name('ventas.pdf');
+        Route::get('/envios', [ReporteController::class, 'envios'])->name('envios');
+        Route::get('/envios/pdf', [ReporteController::class, 'enviosPdf'])->name('envios.pdf');
+    });
 
-    if (Schema::hasTable('facturacion')) {
-        $ventasTotales = (float) DB::table('facturacion')->sum('total');
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Admin – Dashboard
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
-    if (Schema::hasTable('envio')) {
-        $enviosPendientes = (int) DB::table('envio')
-            ->whereRaw('LOWER(tipo_envio) LIKE ?', ['%pendiente%'])
-            ->count();
+});
 
-        $enviosRecientes = DB::table('envio as e')
-            ->leftJoin('facturacion as f', 'f.id_facturacion', '=', 'e.facturacion_id_facturacion')
-            ->leftJoin('cliente as c', 'c.usuario_id_usuario', '=', 'f.cliente_usuario_id_usuario')
-            ->leftJoin('usuario as u', 'u.id_usuario', '=', 'c.usuario_id_usuario')
-            ->select(
-                'e.id_envio',
-                'e.tipo_envio',
-                'e.empresa_transportadora',
-                'f.total as total_factura',
-                'u.nombres',
-                'u.apellidos',
-                'u.correo'
-            )
-            ->orderByDesc('e.id_envio')
-            ->limit(5)
-            ->get()
-            ->map(function ($envio) {
-                $nombreCliente = trim(($envio->nombres ?? '') . ' ' . ($envio->apellidos ?? ''));
-                if ($nombreCliente === '') {
-                    $nombreCliente = $envio->correo ?? 'Cliente desconocido';
+Route::middleware($authMiddleware)->group(function () {
+    /*
+    |--------------------------------------------------------------------------
+    | Admin – CRUD Usuarios
+    | Genera: admin.usuarios.index / create / store / show / edit / update / destroy
+    |--------------------------------------------------------------------------
+    */
+    Route::get('admin/usuarios/inactivos', [UsuarioController::class, 'inactivos'])
+        ->name('admin.usuarios.inactivos');
+    Route::patch('admin/usuarios/{usuario}/reactivar', [UsuarioController::class, 'reactivar'])
+        ->name('admin.usuarios.reactivar');
+    Route::resource('admin/usuarios', UsuarioController::class)
+        ->names('admin.usuarios');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin – Productos
+    |--------------------------------------------------------------------------
+    */
+    Route::get('admin/productos/inactivos', [ProductoController::class, 'inactivos'])
+        ->name('admin.productos.inactivos');
+    Route::patch('admin/productos/{producto}/reactivar', [ProductoController::class, 'reactivar'])
+        ->name('admin.productos.reactivar');
+    Route::resource('admin/productos', ProductoController::class)->names([
+        'index' => 'admin.productos',
+        'create' => 'admin.productos.create',
+        'store' => 'admin.productos.store',
+        'show' => 'admin.productos.show',
+        'edit' => 'admin.productos.edit',
+        'update' => 'admin.productos.update',
+        'destroy' => 'admin.productos.destroy',
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin – Facturación
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/admin/facturacion', function () {
+        $totalFacturadoValor = 0;
+        $totalPagadoValor = 0;
+        $facturas = collect([]);
+
+        if (Schema::hasTable('facturacion')) {
+            $totalFacturadoValor = (float) DB::table('facturacion')->sum('total');
+
+            if (Schema::hasTable('facturacion_has_metodo_pago')) {
+                $totalPagadoValor = (float) DB::table('facturacion_has_metodo_pago')->sum('monto');
+            }
+
+            $query = DB::table('facturacion as f')
+                ->select(
+                    'f.id_facturacion',
+                    'f.fecha',
+                    'f.total',
+                    DB::raw("NULL as nombres"),
+                    DB::raw("NULL as apellidos"),
+                    DB::raw("NULL as correo"),
+                    DB::raw("0 as pagado")
+                )
+                ->orderByDesc('f.id_facturacion');
+
+            if (Schema::hasTable('usuario')) {
+                $query->leftJoin('usuario as u', 'u.id_usuario', '=', 'f.cliente_usuario_id_usuario')
+                    ->addSelect('u.nombres', 'u.apellidos', 'u.correo');
+            }
+
+            if (Schema::hasTable('facturacion_has_metodo_pago')) {
+                $pagosSubquery = DB::table('facturacion_has_metodo_pago')
+                    ->select('facturacion_id_facturacion', DB::raw('SUM(monto) as pagado'))
+                    ->groupBy('facturacion_id_facturacion');
+
+                $query->leftJoinSub($pagosSubquery, 'fp', 'fp.facturacion_id_facturacion', '=', 'f.id_facturacion')
+                    ->addSelect(DB::raw('COALESCE(fp.pagado, 0) as pagado'));
+            }
+
+            $facturas = $query->get()->map(function ($factura) {
+                $cliente = trim(($factura->nombres ?? '') . ' ' . ($factura->apellidos ?? ''));
+                if ($cliente === '') {
+                    $cliente = $factura->correo ?? 'Cliente #' . $factura->id_facturacion;
                 }
 
-                return (object) [
-                    'cliente' => $nombreCliente,
-                    'producto' => $envio->empresa_transportadora ?: 'Envío sin empresa',
-                    'estado' => $envio->tipo_envio ?: 'Pendiente',
-                    'total' => (float) $envio->total_factura,
-                ];
-            });
-    }
-
-    if (Schema::hasTable('chaqueta')) {
-        $totalProductos = Chaqueta::count();
-
-        $resumenVentas = Chaqueta::with(['categoria', 'stock'])
-            ->get()
-            ->map(function ($producto) {
-                $stockCantidad = $producto->stock->sum(fn ($stock) => (int) ($stock->cantidad ?? 0));
+                $fecha = $factura->fecha ? new \DateTime($factura->fecha) : null;
+                $pagado = (float) ($factura->pagado ?? 0);
+                $total = (float) $factura->total;
 
                 return (object) [
-                    'nombre' => $producto->modelo_chaqueta,
-                    'categoria' => $producto->categoria?->tipo_categoria ?? 'Sin categoría',
-                    'precio' => (float) $producto->precio,
-                    'stock' => $stockCantidad,
-                    'estado' => $stockCantidad > 0 ? 'Disponible' : 'Sin stock',
+                    'numero' => 'FAC-' . str_pad($factura->id_facturacion, 4, '0', STR_PAD_LEFT),
+                    'cliente' => $cliente,
+                    'fecha_emision' => $fecha ? $fecha->format('d/m/Y') : 'sin fecha',
+                    'fecha_vencimiento' => $fecha ? (clone $fecha)->add(new \DateInterval('P30D'))->format('d/m/Y') : 'sin fecha',
+                    'monto' => $total,
+                    'estado' => $pagado >= $total && $total > 0 ? 'Pagado' : 'Pendiente',
                 ];
             });
-    }
 
-    if (Schema::hasTable('materiales')) {
-        $stockBajo = Material::where('cantidad', '<', 10)->count();
-        $materialesStockBajo = Material::where('cantidad', '<', 10)
-            ->get()
-            ->map(function ($material) {
-                return (object) [
-                    'id' => $material->id_materiales,
-                    'nombre' => $material->material,
-                    'cantidad' => (int) $material->cantidad,
-                ];
-            });
-    }
+            $facturas = Pagination::collection($facturas)->withQueryString();
+        }
 
-    return view('admin.dashboard', compact(
-        'ventasTotales',
-        'enviosPendientes',
-        'totalProductos',
-        'stockBajo',
-        'enviosRecientes',
-        'materialesStockBajo',
-        'resumenVentas'
-    ));
-})->name('admin.dashboard');
+        $totalPendienteValor = max($totalFacturadoValor - $totalPagadoValor, 0);
 
-/*
-|--------------------------------------------------------------------------
-| Admin – CRUD Usuarios
-| Genera: admin.usuarios.index / create / store / show / edit / update / destroy
-|--------------------------------------------------------------------------
-*/
-Route::resource('admin/usuarios', UsuarioController::class)
-    ->names('admin.usuarios');
+        return view('admin.facturacion', [
+            'totalFacturado' => '$' . number_format($totalFacturadoValor, 0, ',', '.'),
+            'totalPagado' => '$' . number_format($totalPagadoValor, 0, ',', '.'),
+            'totalPendiente' => '$' . number_format($totalPendienteValor, 0, ',', '.'),
+            'facturas' => $facturas,
+        ]);
+    })->name('admin.facturacion');
 
-/*
-|--------------------------------------------------------------------------
-| Admin – Productos
-|--------------------------------------------------------------------------
-*/
-Route::resource('admin/productos', ProductoController::class)->names([
-    'index' => 'admin.productos',
-    'create' => 'admin.productos.create',
-    'store' => 'admin.productos.store',
-    'show' => 'admin.productos.show',
-    'edit' => 'admin.productos.edit',
-    'update' => 'admin.productos.update',
-    'destroy' => 'admin.productos.destroy',
-]);
-
-/*
-|--------------------------------------------------------------------------
-| Admin – Facturación
-|--------------------------------------------------------------------------
-*/
-Route::get('/admin/facturacion', function () {
-    return view('admin.facturacion', [
-        'totalFacturado' => '$0',
-        'totalPagado' => '$0',
-        'totalPendiente' => '$0',
-        'facturas' => collect([]),
-    ]);
-})->name('admin.facturacion');
-
-/*
-|--------------------------------------------------------------------------
-| Admin – Envíos
-|--------------------------------------------------------------------------
-*/
-Route::get('/admin/envios', function () {
+    /*
+    |--------------------------------------------------------------------------
+    | Admin – Envíos
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/admin/envios', function (Request $request) {
+    $buscar = trim((string) $request->query('buscar', ''));
     $envios = collect([]);
     if (Schema::hasTable('envio')) {
         $envios = DB::table('envio as e')
@@ -203,6 +218,20 @@ Route::get('/admin/envios', function () {
                 'u.apellidos as cliente_apellidos',
                 'td.tipo as cliente_tipo_documento'
             )
+            ->when($buscar !== '', function ($query) use ($buscar) {
+                $like = '%' . $buscar . '%';
+                $query->where(function ($query) use ($like) {
+                    $query->where('e.id_envio', 'like', $like)
+                        ->orWhere('f.id_facturacion', 'like', $like)
+                        ->orWhere('e.tipo_envio', 'like', $like)
+                        ->orWhere('e.empresa_transportadora', 'like', $like)
+                        ->orWhere('u.nombres', 'like', $like)
+                        ->orWhere('u.apellidos', 'like', $like)
+                        ->orWhere('c.modelo_chaqueta', 'like', $like)
+                        ->orWhere('d.direccion', 'like', $like)
+                        ->orWhere('d.ciudad', 'like', $like);
+                });
+            })
             ->distinct()
             ->get()
             ->map(function ($envio) {
@@ -213,7 +242,7 @@ Route::get('/admin/envios', function () {
                 ]);
 
                 return (object) [
-                    'id' => $envio->id_envio,
+                    'id' => 'ENV-' . str_pad($envio->id_envio ?? $envio->id_envio, 3, '0', STR_PAD_LEFT),
                     'codigo' => 'PED-' . str_pad($envio->id_facturacion ?? $envio->id_envio, 3, '0', STR_PAD_LEFT),
                     'cliente' => $clientePartes ? implode(' - ', $clientePartes) : 'Cliente #' . ($envio->id_facturacion ?? $envio->id_envio),
                     'producto' => $envio->modelo_chaqueta ?? 'Producto sin detalles',
@@ -230,6 +259,8 @@ Route::get('/admin/envios', function () {
     $enTransito = $envios->where('tipo_envio', 'En tránsito')->count();
     $entregados = $envios->where('tipo_envio', 'Entregado')->count();
 
+    $envios = Pagination::collection($envios)->withQueryString();
+
     return view('admin.envios', compact('totalEnvios', 'enTransito', 'entregados', 'envios'));
 })->name('admin.envios');
 
@@ -238,7 +269,8 @@ Route::get('/admin/envios', function () {
 | Admin – Inventario
 |--------------------------------------------------------------------------
 */
-Route::get('/admin/inventario', function () {
+Route::get('/admin/inventario', function (Request $request) {
+    $buscar = trim((string) $request->query('buscar', ''));
     $ventasTotales = 0;
     if (Schema::hasTable('facturacion')) {
         $ventasTotales = (float) DB::table('facturacion')->sum('total');
@@ -251,31 +283,60 @@ Route::get('/admin/inventario', function () {
 
     $totalProductos = 0;
     if (Schema::hasTable('chaqueta')) {
-        $totalProductos = (int) DB::table('chaqueta')->count();
+        $totalProductos = (int) DB::table('chaqueta')
+            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
+            ->count();
     }
 
     $inventario = collect([]);
     $tallasList = collect([]);
 
-    if (Schema::hasTable('chaqueta') && Schema::hasTable('stock') && Schema::hasTable('talla')) {
+    if (Schema::hasTable('chaqueta')) {
         // Obtener todas las tallas ordenadas
-        $tallasList = DB::table('talla')
-            ->orderBy('orden')
-            ->get()
-            ->mapWithKeys(fn($t) => [$t->id_talla => $t->talla]);
+        if (Schema::hasTable('talla')) {
+            $tallasList = DB::table('talla')
+                ->orderBy(Schema::hasColumn('talla', 'orden') ? 'orden' : 'id_talla')
+                ->get()
+                ->mapWithKeys(fn($t) => [$t->id_talla => $t->talla]);
+        } elseif (Schema::hasTable('stock') && Schema::hasColumn('stock', 'talla')) {
+            $tallasList = DB::table('stock')
+                ->select('talla')
+                ->whereNotNull('talla')
+                ->distinct()
+                ->orderBy('talla')
+                ->pluck('talla', 'talla');
+        }
 
         // Obtener datos del inventario
         $inventario = DB::table('chaqueta as c')
             ->leftJoin('categoria as cat', 'cat.id_categoria', '=', 'c.categoria_id_categoria')
             ->select('c.id_chaqueta', 'c.modelo_chaqueta', 'cat.tipo_categoria')
+            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('c.estado', 'Activo'))
+            ->when($buscar !== '', function ($query) use ($buscar) {
+                $like = '%' . $buscar . '%';
+                $query->where(function ($query) use ($like) {
+                    $query->where('c.id_chaqueta', 'like', $like)
+                        ->orWhere('c.modelo_chaqueta', 'like', $like)
+                        ->orWhere('cat.tipo_categoria', 'like', $like);
+                });
+            })
             ->get()
             ->map(function ($chaqueta) use ($tallasList) {
                 // Obtener stock por cada talla
-                $stockPorTalla = DB::table('stock')
-                    ->where('chaqueta_id_chaqueta', $chaqueta->id_chaqueta)
-                    ->get()
-                    ->keyBy('talla_id_talla')
-                    ->mapWithKeys(fn($stock, $tallaId) => [$tallaId => $stock->cantidad ?? 0]);
+                $stockPorTalla = collect([]);
+                if (Schema::hasTable('stock') && Schema::hasColumn('stock', 'talla_id_talla')) {
+                    $stockPorTalla = DB::table('stock')
+                        ->where('chaqueta_id_chaqueta', $chaqueta->id_chaqueta)
+                        ->get()
+                        ->keyBy('talla_id_talla')
+                        ->mapWithKeys(fn($stock, $tallaId) => [$tallaId => $stock->cantidad ?? 0]);
+                } elseif (Schema::hasTable('stock') && Schema::hasColumn('stock', 'talla')) {
+                    $stockPorTalla = DB::table('stock')
+                        ->where('chaqueta_id_chaqueta', $chaqueta->id_chaqueta)
+                        ->select('talla', DB::raw('COUNT(*) as cantidad'))
+                        ->groupBy('talla')
+                        ->pluck('cantidad', 'talla');
+                }
 
                 $stockTotal = $stockPorTalla->sum();
 
@@ -297,6 +358,8 @@ Route::get('/admin/inventario', function () {
             });
     }
 
+    $inventario = Pagination::collection($inventario)->withQueryString();
+
     return view('admin.inventario.index', compact(
         'ventasTotales',
         'enviosPendientes',
@@ -306,22 +369,37 @@ Route::get('/admin/inventario', function () {
     ));
 })->name('admin.inventario.index');
 
-Route::get('/admin/inventario/create', function () {
-    return view('admin.inventario.create');
-})->name('admin.inventario.create');
+    Route::get('/admin/inventario/create', function () {
+        return view('admin.inventario.create');
+    })->name('admin.inventario.create');
 
 Route::post('/admin/inventario', function (Request $request) {
     // Minimal handler to satisfy form action in the create view during tests.
     return redirect()->route('admin.inventario.index');
 })->name('admin.inventario.store');
 
-Route::get('/admin/materiales', function () {
+Route::get('/admin/materiales', function (Request $request) {
+    $buscar = trim((string) $request->query('buscar', ''));
     $materiales = collect([]);
     $materialesStockBajo = 0;
 
     if (Schema::hasTable('materiales')) {
         $query = DB::table('materiales as m')
             ->select('m.id_materiales as id', 'm.material as nombre', 'm.precio', 'm.cantidad')
+            ->when(Schema::hasColumn('materiales', 'estado'), fn ($query) => $query->where('m.estado', 'Activo'))
+            ->when($buscar !== '', function ($query) use ($buscar) {
+                $like = '%' . $buscar . '%';
+                $query->where(function ($query) use ($like) {
+                    $query->where('m.id_materiales', 'like', $like)
+                        ->orWhere('m.material', 'like', $like)
+                        ->orWhere('m.precio', 'like', $like)
+                        ->orWhere('m.cantidad', 'like', $like);
+
+                    if (Schema::hasTable('proveedor_material')) {
+                        $query->orWhere('pm.proveedor_material', 'like', $like);
+                    }
+                });
+            })
             ->orderByDesc('m.id_materiales');
 
         if (Schema::hasTable('proveedor_material')) {
@@ -329,12 +407,52 @@ Route::get('/admin/materiales', function () {
                   ->addSelect('pm.proveedor_material as proveedor');
         }
 
-        $materiales = $query->get();
-        $materialesStockBajo = $materiales->filter(fn ($m) => (int) ($m->cantidad ?? 0) < 10)->count();
+        $materialesStockBajo = (clone $query)->where('m.cantidad', '<', 10)->count();
+        $materiales = $query->paginate(10)->withQueryString();
     }
 
     return view('admin.materiales.index', compact('materiales', 'materialesStockBajo'));
 })->name('admin.materiales.index');
+
+Route::get('/admin/materiales/inactivos', function (Request $request) {
+    $buscar = trim((string) $request->query('buscar', ''));
+    $materiales = collect([]);
+
+    if (Schema::hasTable('materiales')) {
+        $query = DB::table('materiales as m')
+            ->select('m.id_materiales as id', 'm.material as nombre', 'm.precio', 'm.cantidad')
+            ->when(Schema::hasColumn('materiales', 'estado'), fn ($query) => $query->where('m.estado', 'Inactivo'))
+            ->when($buscar !== '', function ($query) use ($buscar) {
+                $like = '%' . $buscar . '%';
+                $query->where(function ($query) use ($like) {
+                    $query->where('m.id_materiales', 'like', $like)
+                        ->orWhere('m.material', 'like', $like)
+                        ->orWhere('m.precio', 'like', $like)
+                        ->orWhere('m.cantidad', 'like', $like);
+
+                    if (Schema::hasTable('proveedor_material')) {
+                        $query->orWhere('pm.proveedor_material', 'like', $like);
+                    }
+                });
+            })
+            ->orderByDesc('m.id_materiales');
+
+        if (Schema::hasTable('proveedor_material')) {
+            $query->leftJoin('proveedor_material as pm', 'pm.cod_proveedor', '=', 'm.proveedor_material_cod_proveedor')
+                  ->addSelect('pm.proveedor_material as proveedor');
+        }
+
+        $materiales = $query->paginate(10)->withQueryString();
+    }
+
+    return view('admin.materiales.inactivos', compact('materiales'));
+})->name('admin.materiales.inactivos');
+
+Route::patch('/admin/materiales/{material}/reactivar', function ($material) {
+    DB::table('materiales')->where('id_materiales', $material)->update(['estado' => 'Activo']);
+
+    return redirect()->route('admin.materiales.inactivos')->with('success', 'Material reactivado correctamente.');
+})->name('admin.materiales.reactivar');
 
 Route::get('/admin/materiales/create', function () {
     return view('admin.materiales.create');
@@ -408,8 +526,8 @@ Route::get('/admin/materiales/{id}/edit', function ($id) {
     if (! $material) {
         $material = (object) [
             'id' => (int) $id,
-            'nombre' => 'Material ejemplo',
-            'proveedor' => 'Proveedor ejemplo',
+            'nombre' => '',
+            'proveedor' => '',
             'precio' => 0,
             'cantidad' => 0,
         ];
@@ -476,84 +594,48 @@ Route::put('/admin/materiales/{material}', function (Request $request, $material
 })->name('admin.materiales.update');
 
 Route::delete('/admin/materiales/{material}', function ($material) {
-    DB::table('materiales')->where('id_materiales', $material)->delete();
+    if (Schema::hasColumn('materiales', 'estado')) {
+        DB::table('materiales')->where('id_materiales', $material)->update(['estado' => 'Inactivo']);
+    } else {
+        DB::table('materiales')->where('id_materiales', $material)->delete();
+    }
 
-    return redirect()->route('admin.materiales.index')->with('success', 'Material eliminado correctamente.');
+    return redirect()->route('admin.materiales.index')->with('success', 'Material inactivado correctamente.');
 })->name('admin.materiales.destroy');
+
+});
 
 /*
 |--------------------------------------------------------------------------
 | Empleado
 |--------------------------------------------------------------------------
 */
-Route::get('/empleado/dashboard', function () {
-    $enviosPendientes = DB::table('envio')->where('tipo_envio', 'Pendiente')->count();
-    $enTransito = DB::table('envio')->where('tipo_envio', 'En tránsito')->count();
-    $productosDisponibles = DB::table('chaqueta')->count();
-    $entregadosHoy = DB::table('envio')->where('tipo_envio', 'Entregado')->count();
+Route::get('/empleado/dashboard', [EmpleadoDashboardController::class, 'index'])->name('empleado.dashboard');
 
-    $pedidosActivos = collect([]);
-    if (Schema::hasTable('envio') && Schema::hasTable('facturacion') && Schema::hasTable('cliente') && Schema::hasTable('usuario')) {
-        $pedidosActivos = DB::table('envio as e')
-            ->leftJoin('facturacion as f', 'f.id_facturacion', '=', 'e.facturacion_id_facturacion')
-            ->leftJoin('cliente as c', 'c.usuario_id_usuario', '=', 'f.cliente_usuario_id_usuario')
-            ->leftJoin('usuario as u', 'u.id_usuario', '=', 'c.usuario_id_usuario')
-            ->select(
-                'e.id_envio',
-                'e.tipo_envio',
-                'e.empresa_transportadora',
-                'f.id_facturacion',
-                'f.fecha',
-                'f.total as total_factura',
-                'u.nombres',
-                'u.apellidos',
-                'u.correo'
-            )
-            ->orderByDesc('e.id_envio')
-            ->limit(5)
-            ->get()
-            ->map(function ($envio) {
-                $fechaFormato = $envio->fecha ? (new \DateTime($envio->fecha))->format('d/m/Y') : 'sin fecha';
-                $nombreCliente = trim(($envio->nombres ?? '') . ' ' . ($envio->apellidos ?? ''));
-                if ($nombreCliente === '') {
-                    $nombreCliente = $envio->correo ?? 'Cliente #' . ($envio->id_facturacion ?? $envio->id_envio);
-                }
-
-                return (object) [
-                    'id' => $envio->id_envio,
-                    'codigo' => 'PED-' . str_pad($envio->id_facturacion ?? $envio->id_envio, 3, '0', STR_PAD_LEFT),
-                    'estado' => $envio->tipo_envio,
-                    'cliente' => $nombreCliente,
-                    'producto' => $envio->empresa_transportadora,
-                    'descripcion' => 'Envío del ' . $fechaFormato,
-                    'fecha_envio' => $fechaFormato,
-                    'valor' => (float) ($envio->total_factura ?? 0),
-                ];
-            });
-    }
-
-    return view('empleado.dashboard', compact(
-        'enviosPendientes',
-        'enTransito',
-        'productosDisponibles',
-        'entregadosHoy',
-        'pedidosActivos'
-    ));
-})->name('empleado.dashboard');
-
-Route::get('/empleado/productos', function () {
+Route::get('/empleado/productos', function (Request $request) {
+    $buscar = trim((string) $request->query('buscar', ''));
     $productos = collect([]);
 
     if (Schema::hasTable('categoria') && Schema::hasTable('chaqueta')) {
         $productos = Chaqueta::query()
             ->with('categoria', 'materiales')
+            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
+            ->when($buscar !== '', function ($query) use ($buscar) {
+                $like = '%' . $buscar . '%';
+                $query->where(function ($query) use ($like) {
+                    $query->where('id_chaqueta', 'like', $like)
+                        ->orWhere('modelo_chaqueta', 'like', $like)
+                        ->orWhere('precio', 'like', $like)
+                        ->orWhereHas('categoria', fn ($query) => $query->where('tipo_categoria', 'like', $like));
+                });
+            })
             ->get()
             ->map(function ($producto) {
                 $materiales = $producto->materiales ?? collect([]);
                 $stockTotal = 0;
                 $tallas = collect([]);
 
-                if (Schema::hasTable('stock') && Schema::hasTable('talla')) {
+                if (Schema::hasTable('stock') && Schema::hasTable('talla') && Schema::hasColumn('stock', 'talla_id_talla')) {
                     // Obtener solo tallas cuya cantidad sea mayor a 0
                     $tallas = DB::table('stock as s')
                         ->join('talla as t', 't.id_talla', '=', 's.talla_id_talla')
@@ -568,10 +650,23 @@ Route::get('/empleado/productos', function () {
                     $stockTotal = DB::table('stock')
                         ->where('chaqueta_id_chaqueta', $producto->id_chaqueta)
                         ->sum('cantidad');
+                } elseif (Schema::hasTable('stock') && Schema::hasColumn('stock', 'talla')) {
+                    $tallas = DB::table('stock')
+                        ->where('chaqueta_id_chaqueta', $producto->id_chaqueta)
+                        ->whereNotNull('talla')
+                        ->distinct()
+                        ->orderBy('talla')
+                        ->pluck('talla')
+                        ->filter()
+                        ->values();
+
+                    $stockTotal = DB::table('stock')
+                        ->where('chaqueta_id_chaqueta', $producto->id_chaqueta)
+                        ->count();
                 }
 
                 // Solo mostrar el producto si tiene stock registrado
-                if ($tallas->isEmpty() || $stockTotal === 0) {
+                if (Schema::hasTable('stock') && ($tallas->isEmpty() || $stockTotal === 0)) {
                     return null;
                 }
 
@@ -586,19 +681,24 @@ Route::get('/empleado/productos', function () {
                     'materiales' => $materiales->map(fn ($m) => (object) ['nombre' => $m->material, 'id' => $m->id_materiales, 'cantidad' => $m->cantidad]),
                 ];
             })
-            ->filter();
+            ->filter()
+            ->values();
+
+        $productos = Pagination::collection($productos)->withQueryString();
     }
 
     return view('empleado.productos', compact('productos'));
 })->name('empleado.productos');
 
-Route::get('/empleado/materiales', function () {
+Route::get('/empleado/materiales', function (Request $request) {
+    $buscar = trim((string) $request->query('buscar', ''));
     $materiales = collect([]);
     $materialesStockBajo = 0;
 
     if (Schema::hasTable('materiales')) {
         $query = Material::query()
-            ->select('materiales.id_materiales as id', 'materiales.material as nombre', 'materiales.precio', 'materiales.cantidad');
+            ->select('materiales.id_materiales as id', 'materiales.material as nombre', 'materiales.precio', 'materiales.cantidad')
+            ->when(Schema::hasColumn('materiales', 'estado'), fn ($query) => $query->where('materiales.estado', 'Activo'));
 
         // intentar unir con tabla proveedor_material si existe para obtener nombre del proveedor
         if (Schema::hasTable('proveedor_material')) {
@@ -608,15 +708,29 @@ Route::get('/empleado/materiales', function () {
             $query->addSelect(DB::raw("NULL as proveedor"));
         }
 
-        $materiales = $query->orderByDesc('materiales.id_materiales')->get();
+        if ($buscar !== '') {
+            $like = '%' . $buscar . '%';
+            $query->where(function ($query) use ($like) {
+                $query->where('materiales.id_materiales', 'like', $like)
+                    ->orWhere('materiales.material', 'like', $like)
+                    ->orWhere('materiales.precio', 'like', $like)
+                    ->orWhere('materiales.cantidad', 'like', $like);
 
-        $materialesStockBajo = $materiales->filter(fn ($material) => (int) ($material->cantidad ?? 0) < 10)->count();
+                if (Schema::hasTable('proveedor_material')) {
+                    $query->orWhere('proveedor_material.proveedor_material', 'like', $like);
+                }
+            });
+        }
+
+        $materialesStockBajo = (clone $query)->where('materiales.cantidad', '<', 10)->count();
+        $materiales = $query->orderByDesc('materiales.id_materiales')->paginate(10)->withQueryString();
     }
 
     return view('empleado.materiales', compact('materialesStockBajo', 'materiales'));
 })->name('empleado.materiales');
 
-Route::get('/empleado/envios', function () {
+Route::get('/empleado/envios', function (Request $request) {
+    $buscar = trim((string) $request->query('buscar', ''));
     $envios = collect([]);
     if (Schema::hasTable('envio')) {
         $envios = DB::table('envio as e')
@@ -639,6 +753,20 @@ Route::get('/empleado/envios', function () {
                 'u.apellidos as cliente_apellidos',
                 'td.tipo as cliente_tipo_documento'
             )
+            ->when($buscar !== '', function ($query) use ($buscar) {
+                $like = '%' . $buscar . '%';
+                $query->where(function ($query) use ($like) {
+                    $query->where('e.id_envio', 'like', $like)
+                        ->orWhere('f.id_facturacion', 'like', $like)
+                        ->orWhere('e.tipo_envio', 'like', $like)
+                        ->orWhere('e.empresa_transportadora', 'like', $like)
+                        ->orWhere('u.nombres', 'like', $like)
+                        ->orWhere('u.apellidos', 'like', $like)
+                        ->orWhere('c.modelo_chaqueta', 'like', $like)
+                        ->orWhere('d.direccion', 'like', $like)
+                        ->orWhere('d.ciudad', 'like', $like);
+                });
+            })
             ->distinct()
             ->get()
             ->map(function ($envio) {
@@ -666,12 +794,15 @@ Route::get('/empleado/envios', function () {
     $enTransito = $envios->where('tipo_envio', 'En tránsito')->count();
     $entregados = $envios->where('tipo_envio', 'Entregado')->count();
 
+    $envios = Pagination::collection($envios)->withQueryString();
+
     return view('empleado.envios', compact('totalEnvios', 'enTransito', 'entregados', 'envios'));
 })->name('empleado.envios');
 
-Route::get('/empleado/pedidos', function () {
+Route::get('/empleado/pedidos', function (Request $request) {
+    $buscar = trim((string) $request->query('buscar', ''));
     if (! Schema::hasTable('facturacion')) {
-        return view('empleado.pedidos.index', ['pedidos' => collect([])]);
+        return view('empleado.pedidos.index', ['pedidos' => Pagination::collection([])->withQueryString()]);
     }
 
     $facturas = DB::table('facturacion')->orderByDesc('id_facturacion')->get();
@@ -715,21 +846,65 @@ Route::get('/empleado/pedidos', function () {
         ];
     });
 
-    return view('empleado.pedidos.index', ['pedidos' => $pedidos]);
+    if ($buscar !== '') {
+        $needle = mb_strtolower($buscar);
+        $pedidos = $pedidos->filter(function ($pedido) use ($needle) {
+            return str_contains(mb_strtolower($pedido->codigo), $needle)
+                || str_contains(mb_strtolower($pedido->cliente), $needle)
+                || str_contains(mb_strtolower($pedido->estado), $needle)
+                || str_contains(mb_strtolower($pedido->producto), $needle)
+                || str_contains(mb_strtolower($pedido->descripcion), $needle)
+                || str_contains(mb_strtolower($pedido->direccion), $needle)
+                || str_contains((string) $pedido->valor, $needle);
+        })->values();
+    }
+
+    return view('empleado.pedidos.index', ['pedidos' => Pagination::collection($pedidos)->withQueryString()]);
 })->name('empleado.pedidos.index');
 
 Route::get('/empleado/pedidos/{id}', function ($id) {
     if (! Schema::hasTable('facturacion')) {
-        abort(404);
+        $pedido = (object) [
+            'id' => (int) $id,
+            'codigo' => 'PED-' . str_pad((int) $id, 3, '0', STR_PAD_LEFT),
+            'cliente' => (object) ['nombres' => 'Cliente sin registrar'],
+            'fecha' => 'sin fecha',
+            'estado' => 'Pendiente',
+            'producto' => 'Producto sin detalles',
+            'descripcion' => 'Pedido sin datos registrados.',
+            'valor' => 0,
+            'direccion' => 'DirecciÃ³n sin registrar',
+            'fecha_entrega' => 'sin fecha',
+            'valor_producto' => 0,
+            'costo_envio' => 0,
+        ];
+
+        return view('empleado.pedidos.show', compact('pedido'));
     }
 
-    $clienteId = auth()->id();
-    $factura = DB::table('facturacion')
-        ->where('id_facturacion', $id)
-        ->where('cliente_usuario_id_usuario', $clienteId)
-        ->first();
+    $facturaQuery = DB::table('facturacion')->where('id_facturacion', $id);
+    if (auth()->check() && auth()->user()?->rol === 'Cliente') {
+        $facturaQuery->where('cliente_usuario_id_usuario', auth()->id());
+    }
+
+    $factura = $facturaQuery->first();
     if (! $factura) {
-        abort(404);
+        $pedido = (object) [
+            'id' => (int) $id,
+            'codigo' => 'PED-' . str_pad((int) $id, 3, '0', STR_PAD_LEFT),
+            'cliente' => (object) ['nombres' => 'Cliente sin registrar'],
+            'fecha' => 'sin fecha',
+            'estado' => 'Pendiente',
+            'producto' => 'Producto sin detalles',
+            'descripcion' => 'Pedido sin datos registrados.',
+            'valor' => 0,
+            'direccion' => 'DirecciÃ³n sin registrar',
+            'fecha_entrega' => 'sin fecha',
+            'valor_producto' => 0,
+            'costo_envio' => 0,
+        ];
+
+        return view('empleado.pedidos.show', compact('pedido'));
     }
 
     $envioInfo = collect();
@@ -756,7 +931,7 @@ Route::get('/empleado/pedidos/{id}', function ($id) {
     $pedido = (object) [
         'id' => $factura->id_facturacion,
         'codigo' => 'PED-' . str_pad($factura->id_facturacion, 3, '0', STR_PAD_LEFT),
-        'cliente' => 'Cliente #' . $factura->id_facturacion,
+        'cliente' => (object) ['nombres' => 'Cliente #' . $factura->id_facturacion],
         'fecha' => $fechaFormato,
         'estado' => $envioInfo?->tipo_envio ?? 'Pendiente',
         'producto' => $primerItem?->nombre ?? 'Producto sin detalles',
@@ -829,11 +1004,14 @@ Route::get('/cliente/catalogo', function () {
 
     if (Schema::hasTable('categoria') && Schema::hasTable('chaqueta')) {
         $categorias = Categoria::query()
+            ->where('estado_categoria', 1)
             ->pluck('tipo_categoria')
             ->filter()
             ->values();
 
-        $query = Chaqueta::query()->with('categoria');
+        $query = Chaqueta::query()
+            ->with('categoria')
+            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'));
 
         if (Schema::hasTable('chaqueta_has_materiales') && Schema::hasTable('materiales')) {
             $query->with('materiales');
@@ -854,13 +1032,17 @@ Route::get('/cliente/catalogo', function () {
                 'materiales' => $materiales->map(fn ($m) => (object) ['nombre' => $m->material, 'id' => $m->id_materiales, 'cantidad' => $m->cantidad]),
             ];
         });
+
+        $productos = Pagination::collection($productos, 12)->withQueryString();
     }
 
     return view('cliente.catalogo', compact('categorias', 'productos'));
 })->name('cliente.catalogo');
 
 Route::get('/cliente/detalle/{id}', function ($id) {
-    $query = Chaqueta::query()->with('categoria');
+    $query = Chaqueta::query()
+        ->with('categoria')
+        ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'));
 
     if (Schema::hasTable('chaqueta_has_materiales') && Schema::hasTable('materiales')) {
         $query->with('materiales');
@@ -915,7 +1097,9 @@ Route::get('/cliente/detalle/{id}', function ($id) {
 Route::get('/cliente/carrito', function () {
     $carrito = session('carrito', []);
     $items = collect($carrito)->map(function ($item, $key) {
-        $producto = Chaqueta::find($item['producto_id']);
+        $producto = Chaqueta::query()
+            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
+            ->find($item['producto_id']);
         if (! $producto) {
             return null;
         }
@@ -959,7 +1143,9 @@ Route::post('/cliente/carrito/agregar', function (Request $request) {
     $productoExists = true;
 
     if (Schema::hasTable('chaqueta')) {
-        $producto = Chaqueta::find($request->producto_id);
+        $producto = Chaqueta::query()
+            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
+            ->find($request->producto_id);
         if (! $producto) {
             return redirect()->route('cliente.catalogo')->with('error', 'Producto no encontrado.');
         }
@@ -1050,7 +1236,9 @@ Route::post('/cliente/carrito/pagar', function (Request $request) {
     $total = 0;
     $items = [];
     foreach ($carrito as $item) {
-        $producto = Chaqueta::find($item['producto_id']);
+        $producto = Chaqueta::query()
+            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
+            ->find($item['producto_id']);
         if (! $producto) {
             continue;
         }
@@ -1119,7 +1307,7 @@ Route::post('/cliente/carrito/pagar', function (Request $request) {
 
 Route::get('/cliente/pedidos', function () {
     if (! Schema::hasTable('facturacion')) {
-        return view('cliente.pedidos', ['pedidos' => collect([])]);
+        return view('cliente.pedidos', ['pedidos' => Pagination::collection([])->withQueryString()]);
     }
 
     $clienteId = auth()->id();
@@ -1164,7 +1352,7 @@ Route::get('/cliente/pedidos', function () {
         ];
     });
 
-    return view('cliente.pedidos', ['pedidos' => $pedidos]);
+    return view('cliente.pedidos', ['pedidos' => Pagination::collection($pedidos)->withQueryString()]);
 })->name('cliente.pedidos');
 
 Route::put('/cliente/perfil', function (Request $request) {

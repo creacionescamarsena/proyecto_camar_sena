@@ -6,6 +6,23 @@
 <h4>Pedidos</h4>
 <p>Actualiza el estado de los pedidos</p>
 
+<form method="GET" action="{{ route('empleado.pedidos.index') }}" class="card card-custom p-3 mb-3">
+  <div class="row g-2 align-items-center">
+    <div class="col-12 col-md">
+      <div class="input-group">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" name="buscar" value="{{ request('buscar') }}" class="form-control" placeholder="Buscar por pedido, cliente, producto, estado, direccion o valor">
+      </div>
+    </div>
+    <div class="col-12 col-md-auto d-flex gap-2">
+      <button type="submit" class="btn btn-main"><i class="bi bi-search me-1"></i> Buscar</button>
+      @if(request('buscar'))
+        <a href="{{ route('empleado.pedidos.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i> Limpiar</a>
+      @endif
+    </div>
+  </div>
+</form>
+
 @forelse($pedidos as $pedido)
   <div class="card card-custom p-3 mb-3">
 
@@ -70,5 +87,11 @@
     No hay pedidos registrados.
   </div>
 @endforelse
+
+@if($pedidos instanceof \Illuminate\Contracts\Pagination\Paginator)
+  <div class="mt-3">
+    {{ $pedidos->links() }}
+  </div>
+@endif
 
 @endsection

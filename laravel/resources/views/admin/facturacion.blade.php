@@ -8,6 +8,9 @@
     <h4 class="mb-0">Facturación</h4>
     <p class="text-muted small mb-0">Gestiona las facturas y pagos de los clientes</p>
   </div>
+  <a href="{{ route('admin.reportes.ventas') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-bar-chart-line me-1"></i> Reporte ventas
+  </a>
 </div>
 
 <!-- Tarjetas -->
@@ -78,5 +81,11 @@
     </table>
   </div>
 </div>
+
+@if($facturas instanceof \Illuminate\Contracts\Pagination\Paginator)
+  <div class="mt-3">
+    {{ $facturas->links() }}
+  </div>
+@endif
 
 @endsection

@@ -55,7 +55,7 @@
                 </div>
 
                 <div class="mb-3">
-                    <input type="tel" name="telefono" class="form-control @error('telefono') is-invalid @enderror" placeholder="Teléfono (opcional)" value="{{ old('telefono') }}" minlength="8" maxlength="16">
+                    <input type="tel" name="telefono" class="form-control @error('telefono') is-invalid @enderror" placeholder="Teléfono" value="{{ old('telefono') }}" minlength="8" maxlength="16" required>
                     @error('telefono')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
