@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuarios - Creaciones Camar</title>
+ <link href="bootstrap.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar p-3 d-flex flex-column">
+  <div class="mb-3 text-center">
+    <img src="logo.png" alt="Logo" style="width:70px; height:70px; object-fit:contain;">
+    <p class="mb-0 fw-bold mt-1">Creaciones Camar</p>
+    <small>Administrador</small>
+  </div>
+
+  <a href="dashboard_admin.html"><i class="bi bi-grid me-2"></i>Dashboard</a>
+  <a href="usu_admin.html" class="active"><i class="bi bi-person me-2"></i>Usuarios</a>
+  <a href="prod_admin.html"><i class="bi bi-box me-2"></i>Productos</a>
+  <a href="mat_admin.html"><i class="bi bi-stack me-2"></i>Materiales</a>
+  <a href="inv_admin.html"><i class="bi bi-clipboard me-2"></i>Inventario</a>
+  <a href="fac_admin.html"><i class="bi bi-receipt me-2"></i>Facturación</a>
+  <a href="env_admin.html"><i class="bi bi-truck me-2"></i>Envíos</a>
+
+  <hr class="mt-auto">
+  <button class="btn btn-light w-100" onclick="window.location.href='index.html'"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</button>
+</div>
+
+<!-- Contenido -->
+<div class="content">
+
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <div>
+      <h4 class="mb-0">Usuarios</h4>
+      <p class="text-muted small">Gestiona los usuarios del sistema</p>
+    </div>
+    <a href="add_usu_admin.html" class="btn btn-main">
+      <i class="bi bi-person-plus me-1"></i> Nuevo usuario
+    </a>
+  </div>
+
+  <div class="card card-custom p-3 mt-3">
+    <h6 class="mb-3">Resumen de usuarios</h6>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Juan Pérez</td>
+            <td>juan@gmail.com</td>
+            <td><span class="badge" style="background:#506d2f">Administrador</span></td>
+            <td><span class="badge bg-success">Activo</span></td>
+            <td>
+              <a href="update_usu_admin.html" class="btn btn-sm btn-outline-secondary me-1">
+                <i class="bi bi-pencil"></i> Editar
+              </a>
+              <button class="btn btn-sm btn-outline-danger" onclick="mostrarModal('Juan Pérez')">
+                <i class="bi bi-trash"></i> Eliminar
+              </button>
+            </td>
+          </tr>
+          <tr>
+            <td>Maria García</td>
+            <td>maria@gmail.com</td>
+            <td><span class="badge" style="background:#7d5642">Empleado</span></td>
+            <td><span class="badge bg-success">Activo</span></td>
+            <td>
+              <a href="update_usu_admin.html" class="btn btn-sm btn-outline-secondary me-1">
+                <i class="bi bi-pencil"></i> Editar
+              </a>
+              <button class="btn btn-sm btn-outline-danger" onclick="mostrarModal('Maria García')">
+                <i class="bi bi-trash"></i> Eliminar
+              </button>
+            </td>
+          </tr>
+          <tr>
+            <td>Carlos López</td>
+            <td>carlos@gmail.com</td>
+            <td><span class="badge bg-secondary">Cliente</span></td>
+            <td><span class="badge bg-success">Activo</span></td>
+            <td>
+              <a href="update_usu_admin.html" class="btn btn-sm btn-outline-secondary me-1">
+                <i class="bi bi-pencil"></i> Editar
+              </a>
+              <button class="btn btn-sm btn-outline-danger" onclick="mostrarModal('Carlos López')">
+                <i class="bi bi-trash"></i> Eliminar
+              </button>
+            </td>
+          </tr>
+          <tr>
+            <td>Nicolas Pinzón</td>
+            <td>Nicolas@gmail.com</td>
+            <td><span class="badge" style="background:#506d2f">Administrador</span></td>
+            <td><span class="badge bg-success">Activo</span></td>
+            <td>
+              <a href="update_usu_admin.html" class="btn btn-sm btn-outline-secondary me-1">
+                <i class="bi bi-pencil"></i> Editar
+              </a>
+              <button class="btn btn-sm btn-outline-danger" onclick="mostrarModal('Carlos López')">
+                <i class="bi bi-trash"></i> Eliminar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal confirmación eliminar -->
+<div id="modalOverlay" class="modal-overlay" onclick="cerrarModal()">
+  <div class="modal-confirm" onclick="event.stopPropagation()">
+    <p class="fw-semibold fs-5 mb-4">¿Está seguro de eliminar a <span id="nombreUsuario"></span>?</p>
+    <div class="d-flex justify-content-center gap-4">
+      <button class="btn-icon-cancel" onclick="cerrarModal()" title="Cancelar">
+        <i class="bi bi-x-lg"></i>
+      </button>
+      <button class="btn-icon-confirm" onclick="eliminarUsuario()" title="Confirmar">
+        <i class="bi bi-check-lg"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .sidebar a.active {
+    background-color: #3e5525;
+    border-radius: 6px;
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-overlay.show {
+    display: flex;
+  }
+  .modal-confirm {
+    background: white;
+    border-radius: 16px;
+    padding: 40px 50px;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    min-width: 340px;
+  }
+  .btn-icon-cancel {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: 2px solid #dc3545;
+    background: white;
+    color: #dc3545;
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-icon-cancel:hover { background: #dc3545; color: white; }
+  .btn-icon-confirm {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    border: 2px solid #506d2f;
+    background: white;
+    color: #506d2f;
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-icon-confirm:hover { background: #506d2f; color: white; }
+</style>
+
+<script>
+  function mostrarModal(nombre) {
+    document.getElementById('nombreUsuario').textContent = nombre;
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+  function cerrarModal() {
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+  function eliminarUsuario() {
+    alert('Usuario eliminado correctamente.');
+    cerrarModal();
+  }
+</script>
+
+</body>
+</html>

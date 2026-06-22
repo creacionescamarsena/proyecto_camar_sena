@@ -1,0 +1,102 @@
+@extends('layouts.app_admin')
+@section('title', 'Productos')
+
+@section('content')
+
+<div class="d-flex justify-content-between align-items-center mb-1">
+  <div>
+    <h4 class="mb-0">Productos</h4>
+    <p class="text-muted small mb-0">Gestiona el catálogo de productos</p>
+  </div>
+</div>
+
+<div class="row g-3 mt-2">
+  @forelse($productos as $producto)
+    @php
+      $nombreProd = is_string($producto->nombre) ? $producto->nombre : (is_object($producto->nombre) ? ($producto->nombre->nombre ?? $producto->nombre->material ?? $producto->nombre->modelo_chaqueta ?? '') : ($producto->nombre ?? ''));
+      $categoriaProd = is_string($producto->categoria) ? $producto->categoria : (is_object($producto->categoria) ? ($producto->categoria->tipo_categoria ?? $producto->categoria ?? '') : ($producto->categoria ?? ''));
+    @endphp
+    <div class="col-12 col-md-6">
+      <div class="card card-custom p-3 producto-card">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h6 class="mb-0 fw-bold">{{ $nombreProd }}</h6>
+            <small class="text-muted">{{ $categoriaProd }}</small>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-danger"
+                    onclick="mostrarModal({{ $producto->id }}, {!! json_encode($nombreProd) !!})">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <p class="text-muted small mb-1">{{ $producto->descripcion }}</p>
+        <p class="fw-semibold mb-2">${{ number_format($producto->precio, 0, ',', '.') }}</p>
+
+        <p class="small mb-1"><strong>Tallas disponibles</strong></p>
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+          @foreach($producto->tallas ?? [] as $talla)
+            <span class="talla-badge">{{ $talla }}</span>
+          @endforeach
+        </div>
+
+        <p class="small mb-1"><strong>Materiales</strong></p>
+        <p class="small text-muted mb-2">
+          @foreach($producto->materiales ?? [] as $mat)
+            ({{ $mat->nombre }}){{ !$loop->last ? ', ' : '' }}
+          @endforeach
+        </p>
+
+        <div class="d-flex justify-content-between align-items-center stock-bar pt-2">
+          <span class="small text-muted">Stock total</span>
+          <span class="badge {{ $producto->stock_total > 10 ? 'bg-success' : 'bg-warning text-dark' }}">
+            {{ $producto->stock_total }} unidades
+          </span>
+        </div>
+      </div>
+    </div>
+  @empty
+    <div class="col-12">
+      <div class="card card-custom p-4 text-center text-muted">
+        <i class="bi bi-box fs-2 d-block mb-2"></i>
+        No hay productos registrados aún.
+      </div>
+    </div>
+  @endforelse
+</div>
+
+@endsection
+
+@push('scripts')
+<div id="modalOverlay" class="modal-overlay" onclick="cerrarModal()">
+  <div class="modal-confirm" onclick="event.stopPropagation()">
+    <p class="fw-semibold fs-5 mb-4">
+      ¿Está seguro de eliminar <span id="nombreProducto" class="text-danger"></span>?
+    </p>
+    <div class="d-flex justify-content-center gap-4">
+      <button class="btn-icon-cancel" onclick="cerrarModal()" title="Cancelar">
+        <i class="bi bi-x-lg"></i>
+      </button>
+      <form id="formEliminar" method="POST" action="">
+        @csrf
+        @method('DELETE')
+        <button type="submit" class="btn-icon-confirm" title="Confirmar">
+          <i class="bi bi-check-lg"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function mostrarModal(id, nombre) {
+    document.getElementById('nombreProducto').textContent = nombre;
+    document.getElementById('formEliminar').action = `/admin/productos/${id}`;
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+  function cerrarModal() {
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+</script>
+@endpush
