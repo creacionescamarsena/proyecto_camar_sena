@@ -495,6 +495,7 @@ body {
 
 .talla-btn:hover { border-color: var(--verde); color: var(--verde); }
 .talla-btn.active { background: var(--verde); border-color: var(--verde); color: white; }
+.talla-btn.active small { color: rgba(255, 255, 255, 0.82); }
 
 .cantidad-wrap {
   display: flex;
@@ -730,8 +731,18 @@ body {
   color: var(--verde);
 }
 
+.resumen-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .btn-pagar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  min-height: 46px;
   padding: 13px;
   background: var(--verde);
   color: white;
@@ -741,14 +752,20 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: 10px;
+  text-align: center;
+  text-decoration: none;
   transition: background 0.2s;
+  box-sizing: border-box;
 }
 
-.btn-pagar:hover { background: var(--verde-dark); }
+.btn-pagar:hover { background: var(--verde-dark); color: white; }
 
 .btn-seguir {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  min-height: 46px;
   padding: 13px;
   border: 1.5px solid var(--verde);
   border-radius: var(--radius-sm);
@@ -760,8 +777,8 @@ body {
   cursor: pointer;
   text-align: center;
   text-decoration: none;
-  display: block;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .btn-seguir:hover { background: var(--verde-xlight); }

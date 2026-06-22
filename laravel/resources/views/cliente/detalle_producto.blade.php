@@ -11,9 +11,18 @@
   <div class="detalle-grid">
     <!-- Imagen -->
     <div class="detalle-img-wrap">
-      @if($producto->imagen)
-        <img src="{{ asset('storage/' . $producto->imagen) }}" alt="{{ $producto->nombre }}"
-             style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
+      @php
+        $imagen = trim((string) ($producto->imagen ?? ''));
+        $imagenSrc = '';
+        if ($imagen !== '') {
+          $imagenSrc = preg_match('/^https?:\/\//i', $imagen) || str_starts_with($imagen, '/')
+            ? $imagen
+            : asset(str_starts_with($imagen, 'storage/') ? $imagen : 'storage/' . $imagen);
+        }
+      @endphp
+      @if($imagenSrc)
+        <img src="{{ $imagenSrc }}" alt="{{ $producto->nombre }}"
+             style="width:100%;height:100%;object-fit:cover;border-radius:12px;" decoding="async">
       @else
         <div class="detalle-img-placeholder"><i class="bi bi-image"></i></div>
       @endif
@@ -44,10 +53,8 @@
         <div class="tallas-wrap">
           @foreach($producto->tallas as $talla => $cantidad)
             <button type="button" class="talla-btn" onclick="selTalla(this)" data-talla="{{ $talla }}" data-stock="{{ $cantidad }}">
-              {{ $talla }}
-              @if($cantidad > 1)
-                <small class="text-muted">({{ $cantidad }} disponibles)</small>
-              @endif
+              <span>{{ $talla }}</span>
+              <small>{{ (int) $cantidad }} {{ (int) $cantidad === 1 ? 'unidad' : 'unidades' }}</small>
             </button>
           @endforeach
         </div>

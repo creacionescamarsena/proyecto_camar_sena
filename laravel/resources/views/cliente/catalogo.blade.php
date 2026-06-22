@@ -33,13 +33,20 @@
       @php
         $prodNombre = is_string($producto->nombre) ? $producto->nombre : (is_object($producto->nombre) ? ($producto->nombre->nombre ?? $producto->nombre->material ?? $producto->nombre->modelo_chaqueta ?? '') : ($producto->nombre ?? ''));
         $prodCategoria = is_string($producto->categoria) ? $producto->categoria : (is_object($producto->categoria) ? ($producto->categoria->tipo_categoria ?? $producto->categoria ?? '') : ($producto->categoria ?? ''));
+        $imagen = trim((string) ($producto->imagen ?? ''));
+        $imagenSrc = '';
+        if ($imagen !== '') {
+          $imagenSrc = preg_match('/^https?:\/\//i', $imagen) || str_starts_with($imagen, '/')
+            ? $imagen
+            : asset(str_starts_with($imagen, 'storage/') ? $imagen : 'storage/' . $imagen);
+        }
       @endphp
       <a href="{{ route('cliente.detalle_producto', ['id' => $producto->id]) }}" class="product-card"
          data-categoria="{{ $prodCategoria }}" data-nombre="{{ strtolower($prodNombre) }}">
         <div class="product-img-wrap">
-          @if($producto->imagen)
-            <img src="{{ asset('storage/' . $producto->imagen) }}" alt="{{ $producto->nombre }}"
-                 style="width:100%;height:100%;object-fit:cover;">
+          @if($imagenSrc)
+            <img src="{{ $imagenSrc }}" alt="{{ $prodNombre }}"
+                 style="width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async">
           @else
             <div class="product-img-placeholder"><i class="bi bi-image"></i></div>
           @endif
@@ -67,12 +74,6 @@
       </div>
     @endforelse
   </div>
-
-  @if($productos instanceof \Illuminate\Contracts\Pagination\Paginator)
-    <div class="mt-4">
-      {{ $productos->links() }}
-    </div>
-  @endif
 </div>
 
 @endsection

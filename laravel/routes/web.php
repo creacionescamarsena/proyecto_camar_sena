@@ -27,7 +27,7 @@ $authMiddleware = app()->environment('testing') ? [] : ['auth'];
 | Autenticación
 |--------------------------------------------------------------------------
 */
-Route::get('/', [AuthController::class, 'showLogin'])->name('home');
+Route::get('/', fn () => view('home'))->name('home');
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
@@ -898,7 +898,7 @@ Route::get('/empleado/pedidos/{id}', function ($id) {
             'producto' => 'Producto sin detalles',
             'descripcion' => 'Pedido sin datos registrados.',
             'valor' => 0,
-            'direccion' => 'DirecciÃ³n sin registrar',
+            'direccion' => 'Dirección sin registrar',
             'fecha_entrega' => 'sin fecha',
             'valor_producto' => 0,
             'costo_envio' => 0,
@@ -1004,14 +1004,11 @@ Route::get('/cliente/catalogo', function () {
 
     if (Schema::hasTable('categoria') && Schema::hasTable('chaqueta')) {
         $categorias = Categoria::query()
-            ->where('estado_categoria', 1)
             ->pluck('tipo_categoria')
             ->filter()
             ->values();
 
-        $query = Chaqueta::query()
-            ->with('categoria')
-            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'));
+        $query = Chaqueta::query()->with('categoria');
 
         if (Schema::hasTable('chaqueta_has_materiales') && Schema::hasTable('materiales')) {
             $query->with('materiales');
@@ -1027,22 +1024,18 @@ Route::get('/cliente/catalogo', function () {
                 'categoria' => $producto->categoria?->tipo_categoria ?? 'General',
                 'descripcion_corta' => 'Chaqueta ' . ($producto->categoria?->tipo_categoria ?? 'general'),
                 'precio' => (float) $producto->precio,
-                'imagen' => null,
+                'imagen' => Schema::hasColumn('chaqueta', 'imagen') ? $producto->imagen : null,
                 'stock_total' => $stockTotal > 0 ? $stockTotal : 1,
                 'materiales' => $materiales->map(fn ($m) => (object) ['nombre' => $m->material, 'id' => $m->id_materiales, 'cantidad' => $m->cantidad]),
             ];
         });
-
-        $productos = Pagination::collection($productos, 12)->withQueryString();
     }
 
     return view('cliente.catalogo', compact('categorias', 'productos'));
 })->name('cliente.catalogo');
 
 Route::get('/cliente/detalle/{id}', function ($id) {
-    $query = Chaqueta::query()
-        ->with('categoria')
-        ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'));
+    $query = Chaqueta::query()->with('categoria');
 
     if (Schema::hasTable('chaqueta_has_materiales') && Schema::hasTable('materiales')) {
         $query->with('materiales');
@@ -1058,15 +1051,40 @@ Route::get('/cliente/detalle/{id}', function ($id) {
     $stockTotal = 0;
     $tallas = collect(['XS', 'S', 'M', 'L', 'XL'])->mapWithKeys(fn ($talla) => [$talla => 1]);
 
-    if (Schema::hasTable('stock')) {
-        $stockByTalla = DB::table('stock as s')
+    if (
+        Schema::hasTable('stock')
+        && Schema::hasTable('talla')
+        && Schema::hasColumn('stock', 'talla_id_talla')
+        && Schema::hasColumn('stock', 'cantidad')
+    ) {
+        $stockQuery = DB::table('stock as s')
             ->join('talla as t', 's.talla_id_talla', '=', 't.id_talla')
             ->where('s.chaqueta_id_chaqueta', $producto->id_chaqueta)
-            ->select('t.talla', DB::raw('SUM(s.cantidad) as cantidad'))
-            ->groupBy('t.talla')
-            ->orderBy('t.orden')
+            ->select('t.talla', DB::raw('SUM(s.cantidad) as cantidad'));
+
+        if (Schema::hasColumn('talla', 'orden')) {
+            $stockQuery->groupBy('t.talla', 't.orden')->orderBy('t.orden');
+        } else {
+            $stockQuery->groupBy('t.talla')->orderBy('t.talla');
+        }
+
+        $stockByTalla = $stockQuery
             ->pluck('cantidad', 't.talla')
-            ->filter();
+            ->filter(fn ($cantidad) => (int) $cantidad > 0);
+
+        if ($stockByTalla->isNotEmpty()) {
+            $tallas = $stockByTalla;
+            $stockTotal = $stockByTalla->sum();
+        }
+    } elseif (Schema::hasTable('stock') && Schema::hasColumn('stock', 'talla')) {
+        $stockByTalla = DB::table('stock')
+            ->where('chaqueta_id_chaqueta', $producto->id_chaqueta)
+            ->whereNotNull('talla')
+            ->select('talla', DB::raw('COUNT(*) as cantidad'))
+            ->groupBy('talla')
+            ->orderBy('talla')
+            ->pluck('cantidad', 'talla')
+            ->filter(fn ($cantidad) => (int) $cantidad > 0);
 
         if ($stockByTalla->isNotEmpty()) {
             $tallas = $stockByTalla;
@@ -1097,9 +1115,7 @@ Route::get('/cliente/detalle/{id}', function ($id) {
 Route::get('/cliente/carrito', function () {
     $carrito = session('carrito', []);
     $items = collect($carrito)->map(function ($item, $key) {
-        $producto = Chaqueta::query()
-            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
-            ->find($item['producto_id']);
+        $producto = Chaqueta::find($item['producto_id']);
         if (! $producto) {
             return null;
         }
@@ -1143,21 +1159,31 @@ Route::post('/cliente/carrito/agregar', function (Request $request) {
     $productoExists = true;
 
     if (Schema::hasTable('chaqueta')) {
-        $producto = Chaqueta::query()
-            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
-            ->find($request->producto_id);
+        $producto = Chaqueta::find($request->producto_id);
         if (! $producto) {
             return redirect()->route('cliente.catalogo')->with('error', 'Producto no encontrado.');
         }
     }
 
-    if (Schema::hasTable('stock')) {
+    if (
+        Schema::hasTable('stock')
+        && Schema::hasTable('talla')
+        && Schema::hasColumn('stock', 'talla_id_talla')
+        && Schema::hasColumn('stock', 'cantidad')
+    ) {
         $stockByTalla = DB::table('stock as s')
             ->join('talla as t', 's.talla_id_talla', '=', 't.id_talla')
             ->where('s.chaqueta_id_chaqueta', $request->producto_id)
             ->select('t.talla', DB::raw('SUM(s.cantidad) as cantidad'))
             ->groupBy('t.talla')
             ->pluck('cantidad', 't.talla');
+    } elseif (Schema::hasTable('stock') && Schema::hasColumn('stock', 'talla')) {
+        $stockByTalla = DB::table('stock')
+            ->where('chaqueta_id_chaqueta', $request->producto_id)
+            ->whereNotNull('talla')
+            ->select('talla', DB::raw('COUNT(*) as cantidad'))
+            ->groupBy('talla')
+            ->pluck('cantidad', 'talla');
     }
 
     if ($stockByTalla->isNotEmpty()) {
@@ -1227,6 +1253,192 @@ Route::delete('/cliente/carrito', function () {
     return redirect()->route('cliente.carrito');
 })->name('cliente.carrito.vaciar');
 
+
+
+Route::get('/cliente/checkout', function () {
+
+    $carrito = session('carrito', []);
+
+    $subtotal = 0;
+
+    foreach ($carrito as $item) {
+
+        $producto = App\Models\Chaqueta::find($item['producto_id']);
+
+        if (!$producto) {
+            continue;
+        }
+
+        $subtotal += $producto->precio * $item['cantidad'];
+    }
+
+    return view('cliente.checkout', [
+        'subtotal' => $subtotal
+    ]);
+
+})->name('cliente.checkout');
+
+
+
+
+
+
+
+
+
+Route::post('/cliente/pedido/guardar', function (\Illuminate\Http\Request $request) {
+
+    $carrito = session('carrito', []);
+
+    if (!count($carrito)) {
+        return redirect()
+            ->route('cliente.carrito')
+            ->with('error', 'El carrito está vacío.');
+    }
+
+ 
+
+    // Dirección
+    $direccionId = uniqid();
+
+DB::table('direccion')->insert([
+    'id_direccion' => $direccionId,
+    'direccion' => $request->direccion,
+    'pais' => $request->pais,
+    'ciudad' => $request->ciudad,
+    'codigo_postal' => $request->codigo_postal,
+    'cliente_usuario_id_usuario' => auth()->id(),
+    'ciudad_id_ciudad' => null,
+]);
+
+    // Método de pago
+    DB::table('metodo_pago')->insert([
+        'metodo_pago' => $request->metodo_pago,
+        'estado' => 'Pendiente'
+    ]);
+
+    // Calcular total
+$total = 0;
+$items = [];
+
+foreach ($carrito as $item) {
+
+    $producto = Chaqueta::find($item['producto_id']);
+
+    if (!$producto) {
+        continue;
+    }
+
+    $cantidad = (int) $item['cantidad'];
+
+    $total += $producto->precio * $cantidad;
+
+    $items[] = [
+        'producto' => $producto,
+        'cantidad' => $cantidad,
+        'talla' => $item['talla'] ?? null,
+    ];
+}
+
+    $facturaData = [
+    'fecha' => now(),
+    'total' => $total,
+    'impuestos' => 0,
+    'cliente_usuario_id_usuario' => auth()->id(),
+    'empleado_usuario_id_usuario' => null,
+    ];
+
+    if (Schema::hasColumn('facturacion', 'pais')) {
+        $facturaData['pais'] = $request->pais;
+    }
+
+    if (Schema::hasColumn('facturacion', 'moneda')) {
+        $facturaData['moneda'] = $request->moneda ?? 'COP';
+    }
+
+    if (Schema::hasColumn('facturacion', 'total_convertido')) {
+        $facturaData['total_convertido'] = $request->total_convertido ?? $total;
+    }
+
+    if (Schema::hasColumn('facturacion', 'envio_convertido')) {
+        $facturaData['envio_convertido'] = $request->envio_convertido ?? 0;
+    }
+
+    $facturaId = DB::table('facturacion')->insertGetId($facturaData);
+    // Productos comprados
+   // Productos comprados
+foreach ($items as $item) {
+
+    $detalleFactura = [
+        'facturacion_id_facturacion' => $facturaId,
+        'chaqueta_id_chaqueta' => $item['producto']->id_chaqueta,
+        'cantidad_venta' => $item['cantidad'],
+        'valor_venta' => (string) $item['producto']->precio,
+    ];
+
+    if (Schema::hasColumn('facturacion_has_chaqueta', 'talla')) {
+        $detalleFactura['talla'] = $item['talla'];
+    }
+
+    DB::table('facturacion_has_chaqueta')->insert($detalleFactura);
+
+    if (
+        Schema::hasTable('stock')
+        && Schema::hasTable('talla')
+        && Schema::hasColumn('stock', 'talla_id_talla')
+        && Schema::hasColumn('stock', 'cantidad')
+        && ! empty($item['talla'])
+    ) {
+        $tallaId = DB::table('talla')->where('talla', $item['talla'])->value('id_talla');
+
+        if ($tallaId) {
+            $stockRow = DB::table('stock')
+                ->where('chaqueta_id_chaqueta', $item['producto']->id_chaqueta)
+                ->where('talla_id_talla', $tallaId)
+                ->first();
+
+            if ($stockRow) {
+                DB::table('stock')
+                    ->where('chaqueta_id_chaqueta', $item['producto']->id_chaqueta)
+                    ->where('talla_id_talla', $tallaId)
+                    ->update(['cantidad' => max(0, ((int) $stockRow->cantidad) - (int) $item['cantidad'])]);
+            }
+        }
+    }
+
+}
+
+    // Envío
+    DB::table('envio')->insert([
+        'facturacion_id_facturacion' => $facturaId,
+        'tipo_envio' => 'Pendiente',
+        'empresa_transportadora' => '',
+        'direccion_id_direccion' => $direccionId,
+    ]);
+
+    if (Schema::hasTable('pedidos')) {
+        DB::table('pedidos')->insert([
+            'facturacion_id_facturacion' => $facturaId,
+            'estado' => 'Pendiente',
+        ]);
+    }
+
+    // Vaciar carrito
+    session()->forget('carrito');
+
+    return redirect()
+        ->route('cliente.pedidos')
+        ->with('success', 'Pedido registrado correctamente.');
+
+
+
+
+        
+})->name('cliente.pedido.guardar');
+
+
+
+
 Route::post('/cliente/carrito/pagar', function (Request $request) {
     $carrito = session('carrito', []);
     if (! count($carrito)) {
@@ -1236,9 +1448,7 @@ Route::post('/cliente/carrito/pagar', function (Request $request) {
     $total = 0;
     $items = [];
     foreach ($carrito as $item) {
-        $producto = Chaqueta::query()
-            ->when(Schema::hasColumn('chaqueta', 'estado'), fn ($query) => $query->where('estado', 'Activo'))
-            ->find($item['producto_id']);
+        $producto = Chaqueta::find($item['producto_id']);
         if (! $producto) {
             continue;
         }
@@ -1266,15 +1476,26 @@ Route::post('/cliente/carrito/pagar', function (Request $request) {
     ]);
 
     foreach ($items as $item) {
-        DB::table('facturacion_has_chaqueta')->insert([
+        $detalleFactura = [
             'facturacion_id_facturacion' => $facturaId,
             'chaqueta_id_chaqueta' => $item['chaqueta']->id_chaqueta,
             'cantidad_venta' => $item['cantidad'],
             'valor_venta' => (string) $item['chaqueta']->precio,
-        ]);
+        ];
 
-        // Decrement stock by talla if stock table exists
-        if (Schema::hasTable('stock') && ! empty($item['talla'])) {
+        if (Schema::hasColumn('facturacion_has_chaqueta', 'talla')) {
+            $detalleFactura['talla'] = $item['talla'];
+        }
+
+        DB::table('facturacion_has_chaqueta')->insert($detalleFactura);
+
+        if (
+            Schema::hasTable('stock')
+            && Schema::hasTable('talla')
+            && Schema::hasColumn('stock', 'talla_id_talla')
+            && Schema::hasColumn('stock', 'cantidad')
+            && ! empty($item['talla'])
+        ) {
             $tallaName = $item['talla'];
             $tallaId = DB::table('talla')->where('talla', $tallaName)->value('id_talla');
             if ($tallaId) {
@@ -1293,6 +1514,7 @@ Route::post('/cliente/carrito/pagar', function (Request $request) {
             }
         }
     }
+    
 
     DB::table('envio')->insert([
         'facturacion_id_facturacion' => $facturaId,
@@ -1307,7 +1529,7 @@ Route::post('/cliente/carrito/pagar', function (Request $request) {
 
 Route::get('/cliente/pedidos', function () {
     if (! Schema::hasTable('facturacion')) {
-        return view('cliente.pedidos', ['pedidos' => Pagination::collection([])->withQueryString()]);
+        return view('cliente.pedidos', ['pedidos' => collect([])]);
     }
 
     $clienteId = auth()->id();
@@ -1316,43 +1538,84 @@ Route::get('/cliente/pedidos', function () {
         ->orderByDesc('id_facturacion')
         ->get();
     $envios = Schema::hasTable('envio')
-        ? DB::table('envio')->select('facturacion_id_facturacion', 'tipo_envio')->get()->keyBy('facturacion_id_facturacion')
-        : collect();
-    $detalleItems = Schema::hasTable('facturacion_has_chaqueta')
-        ? DB::table('facturacion_has_chaqueta as fc')
-            ->join('chaqueta as c', 'c.id_chaqueta', '=', 'fc.chaqueta_id_chaqueta')
-            ->select(
-                'fc.facturacion_id_facturacion',
-                'c.modelo_chaqueta as nombre',
-                'c.precio',
-                'fc.cantidad_venta as cantidad'
-            )
-            ->get()
-            ->groupBy('facturacion_id_facturacion')
-        : collect();
+    ? DB::table('envio as e')
+        ->leftJoin('direccion as d', 'd.id_direccion', '=', 'e.direccion_id_direccion')
+        ->select(
+            'e.facturacion_id_facturacion',
+            'e.tipo_envio',
+            'd.pais',
+            'd.ciudad',
+            'd.direccion',
+            'd.codigo_postal'
+        )
+        ->get()
+        ->keyBy('facturacion_id_facturacion')
+    : collect();
+        
+$detalleItems = collect();
+if (Schema::hasTable('facturacion_has_chaqueta')) {
+    $tallaSelect = Schema::hasColumn('facturacion_has_chaqueta', 'talla')
+        ? 'fc.talla'
+        : DB::raw('NULL as talla');
 
-    $pedidos = $facturas->map(function ($factura) use ($envios, $detalleItems) {
-        $pedidoItems = ($detalleItems->get($factura->id_facturacion) ?? collect())->map(function ($item) {
+    $detalleItems = DB::table('facturacion_has_chaqueta as fc')
+        ->join('chaqueta as c', 'c.id_chaqueta', '=', 'fc.chaqueta_id_chaqueta')
+        ->select(
+            'fc.facturacion_id_facturacion',
+            'c.modelo_chaqueta as nombre',
+            'c.precio',
+            'fc.cantidad_venta as cantidad',
+            $tallaSelect
+        )
+        ->get()
+        ->groupBy('facturacion_id_facturacion');
+}
+
+$pedidos = $facturas->map(function ($factura) use ($envios, $detalleItems) {
+
+    $pedidoItems = ($detalleItems->get($factura->id_facturacion) ?? collect())
+        ->map(function ($item) {
+
             return (object) [
                 'producto' => (object) [
                     'nombre' => $item->nombre,
                     'precio' => (float) $item->precio,
                 ],
-                'talla' => '-',
+                'talla' => $item->talla,
                 'cantidad' => (int) $item->cantidad,
             ];
         });
 
-        return (object) [
-            'codigo' => 'PED-' . str_pad($factura->id_facturacion, 3, '0', STR_PAD_LEFT),
-            'created_at' => $factura->fecha,
-            'estado' => $envios->get($factura->id_facturacion)?->tipo_envio ?? 'Pendiente',
-            'total' => (float) $factura->total,
-            'items' => $pedidoItems,
-        ];
-    });
+    $envio = $envios->get($factura->id_facturacion);
 
-    return view('cliente.pedidos', ['pedidos' => Pagination::collection($pedidos)->withQueryString()]);
+
+
+return (object) [
+    'codigo' => 'PED-' . str_pad($factura->id_facturacion, 3, '0', STR_PAD_LEFT),
+    'created_at' => $factura->fecha,
+
+    'estado' => $envios->get($factura->id_facturacion)?->tipo_envio ?? 'Pendiente',
+
+    'total' => (float) $factura->total,
+    'total_convertido' => (float) ($factura->total_convertido ?? $factura->total ?? 0),
+    'envio_convertido' => (float) ($factura->envio_convertido ?? 0),
+
+    'moneda' => $factura->moneda ?? 'COP',
+
+    // datos del envío
+    'pais' => $envio?->pais ?? 'No registrado',
+    'ciudad' => $envio?->ciudad ?? 'No registrada',
+    'direccion' => $envio?->direccion ?? 'No registrada',
+    'codigo_postal' => $envio?->codigo_postal ?? 'No registrado',
+
+    'items' => $pedidoItems,
+];
+
+});
+
+return view('cliente.pedidos', [
+    'pedidos' => $pedidos
+]);
 })->name('cliente.pedidos');
 
 Route::put('/cliente/perfil', function (Request $request) {
