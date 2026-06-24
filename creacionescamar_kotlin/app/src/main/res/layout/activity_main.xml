@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#FFFFFF"
+        android:padding="20dp">
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Información del producto"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp"/>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginEnd="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ID de chaqueta"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="6dp"/>
+
+                <EditText
+                    android:id="@+id/et_id_chaqueta"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/border_input"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:inputType="number"/>
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nombre"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="6dp"/>
+
+                <EditText
+                    android:id="@+id/et_nombre"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/border_input"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:inputType="textPersonName"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Categoría -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Categoría"
+            android:textSize="14sp"
+            android:layout_marginBottom="6dp"/>
+
+        <Spinner
+            android:id="@+id/spinner_categoria"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/border_spinner"
+            android:paddingStart="12dp"
+            android:layout_marginBottom="6dp"/>
+
+        <EditText
+            android:id="@+id/et_nueva_categoria"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/border_input"
+            android:paddingStart="12dp"
+            android:hint="O escribe una nueva categoría"
+            android:layout_marginBottom="16dp"/>
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Precio (COP)"
+            android:textSize="14sp"
+            android:layout_marginBottom="6dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:background="@drawable/border_input"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="COP"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:textColor="#555555"/>
+
+            <EditText
+                android:id="@+id/et_precio"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@null"
+                android:inputType="numberDecimal"/>
+        </LinearLayout>
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cantidades por talla"
+            android:textSize="14sp"
+            android:layout_marginBottom="10dp"/>
+
+        <!-- Fila tallas 1: XS, S, M -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:orientation="horizontal"
+                android:background="@drawable/border_input" android:layout_marginEnd="8dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="match_parent"
+                    android:text="XS" android:gravity="center" android:paddingStart="10dp" android:paddingEnd="6dp"/>
+                <EditText android:id="@+id/et_xs" android:layout_width="0dp"
+                    android:layout_height="match_parent" android:layout_weight="1"
+                    android:background="@null" android:text="0" android:inputType="number"/>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:orientation="horizontal"
+                android:background="@drawable/border_input" android:layout_marginEnd="8dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="match_parent"
+                    android:text="S" android:gravity="center" android:paddingStart="10dp" android:paddingEnd="6dp"/>
+                <EditText android:id="@+id/et_s" android:layout_width="0dp"
+                    android:layout_height="match_parent" android:layout_weight="1"
+                    android:background="@null" android:text="0" android:inputType="number"/>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:orientation="horizontal"
+                android:background="@drawable/border_input">
+                <TextView android:layout_width="wrap_content" android:layout_height="match_parent"
+                    android:text="M" android:gravity="center" android:paddingStart="10dp" android:paddingEnd="6dp"/>
+                <EditText android:id="@+id/et_m" android:layout_width="0dp"
+                    android:layout_height="match_parent" android:layout_weight="1"
+                    android:background="@null" android:text="0" android:inputType="number"/>
+            </LinearLayout>
+        </LinearLayout>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:orientation="horizontal"
+                android:background="@drawable/border_input" android:layout_marginEnd="8dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="match_parent"
+                    android:text="L" android:gravity="center" android:paddingStart="10dp" android:paddingEnd="6dp"/>
+                <EditText android:id="@+id/et_l" android:layout_width="0dp"
+                    android:layout_height="match_parent" android:layout_weight="1"
+                    android:background="@null" android:text="0" android:inputType="number"/>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:orientation="horizontal"
+                android:background="@drawable/border_input">
+                <TextView android:layout_width="wrap_content" android:layout_height="match_parent"
+                    android:text="XL" android:gravity="center" android:paddingStart="10dp" android:paddingEnd="6dp"/>
+                <EditText android:id="@+id/et_xl" android:layout_width="0dp"
+                    android:layout_height="match_parent" android:layout_weight="1"
+                    android:background="@null" android:text="0" android:inputType="number"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Imagen -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Imagen"
+            android:textSize="14sp"
+            android:layout_marginBottom="6dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@drawable/border_input"
+            android:padding="4dp"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/btn_seleccionar_imagen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Seleccionar archivo"
+                android:backgroundTint="#E0E0E0"
+                android:textColor="#000000"
+                android:elevation="0dp"/>
+
+            <TextView
+                android:id="@+id/tv_archivo_nombre"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Ningún archivo seleccionado"
+                android:gravity="center_vertical"
+                android:paddingStart="10dp"
+                android:textColor="#888888"/>
+        </LinearLayout>
+
+        <!-- Materiales -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Materiales"
+            android:textSize="14sp"
+            android:layout_marginBottom="6dp"/>
+
+        <ListView
+            android:id="@+id/lv_materiales"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="@drawable/border_input"
+            android:padding="8dp"
+            android:choiceMode="multipleChoice"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mantén Ctrl/Cmd para seleccionar varios."
+            android:textSize="11sp"
+            android:textColor="#888888"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Botones -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <Button
+                android:id="@+id/btn_cancelar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cancelar"
+                android:backgroundTint="#FFFFFF"
+                android:textColor="#000000"
+                android:layout_marginEnd="12dp"
+                style="@style/Widget.AppCompat.Button.Borderless"/>
+
+            <Button
+                android:id="@+id/btn_guardar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Guardar"
+                android:backgroundTint="#2E5D2E"
+                android:textColor="#FFFFFF"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
