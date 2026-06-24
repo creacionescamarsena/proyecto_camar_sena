@@ -18,9 +18,17 @@
       @forelse($items as $item)
         <div class="carrito-item" id="item{{ $item->id }}">
           <div class="carrito-item-img">
-            @if($item->producto->imagen)
-              <img src="{{ asset('storage/' . $item->producto->imagen) }}"
-                   alt="{{ $item->producto->nombre }}" style="width:100%;height:100%;object-fit:cover;">
+            @php
+              $imagen = trim((string) ($item->producto->imagen ?? ''));
+              $imagenSrc = '';
+              if ($imagen !== '') {
+                $imagenSrc = preg_match('/^https?:\/\//i', $imagen) || str_starts_with($imagen, '/')
+                  ? $imagen
+                  : asset(str_starts_with($imagen, 'storage/') ? $imagen : 'storage/' . $imagen);
+              }
+            @endphp
+            @if($imagenSrc)
+              <img src="{{ $imagenSrc }}" alt="{{ $item->producto->nombre }}" loading="lazy" decoding="async">
             @else
               <i class="bi bi-image"></i>
             @endif
@@ -89,15 +97,14 @@
           <span>Total</span>
           <span class="resumen-total-val">${{ number_format($subtotal + $costoEnvio, 0, ',', '.') }}</span>
         </div>
-        <form method="POST" action="{{ route('cliente.carrito.pagar') }}">
-          @csrf
-          <button type="submit" class="btn-pagar">
+        <div class="resumen-actions">
+          <a href="{{ route('cliente.checkout') }}" class="btn-pagar">
             Proceder con el pago
-          </button>
-        </form>
-        <a href="{{ route('cliente.catalogo') }}" class="btn-seguir">
-          Continuar comprando
-        </a>
+          </a>
+          <a href="{{ route('cliente.catalogo') }}" class="btn-seguir">
+            Continuar comprando
+          </a>
+        </div>
       </div>
     </div>
   @endif

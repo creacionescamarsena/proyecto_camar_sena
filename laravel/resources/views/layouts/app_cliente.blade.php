@@ -9,7 +9,7 @@
   <link href="{{ asset('css/fonts.css') }}" rel="stylesheet">
   <link rel="stylesheet" href="{{ asset('css/style_cliente.css') }}">
 </head>
-<body>
+<body> 
 
 <!-- Navbar -->
 <nav class="navbar-cliente">
